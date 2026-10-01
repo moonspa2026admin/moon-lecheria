@@ -219,3 +219,219 @@ async function cargarVentasDia() {
     `;
   }
 }
+// ==========================================
+// 1. CONTROL DE MODALES (Abrir y Cerrar)
+// ==========================================
+function abrirModalEspecialista() {
+  document.getElementById('modalEspecialista').classList.remove('hidden');
+}
+
+function cerrarModalEspecialista() {
+  document.getElementById('modalEspecialista').classList.add('hidden');
+  document.getElementById('formEspecialista').reset();
+}
+
+function abrirModalServicio() {
+  document.getElementById('modalServicio').classList.remove('hidden');
+}
+
+function cerrarModalServicio() {
+  document.getElementById('modalServicio').classList.add('hidden');
+  document.getElementById('formServicio').reset();
+}
+
+// ==========================================
+// 2. GUARDAR ESPECIALISTA EN SUPABASE
+// ==========================================
+async function guardarEspecialista(event) {
+  event.preventDefault();
+  const nombre = document.getElementById('inputNombreEspecialista').value;
+  const porcentaje_comision = parseFloat(document.getElementById('inputComisionEspecialista').value);
+
+  const { data, error } = await supabase
+    .from('especialistas')
+    .insert([{ nombre, porcentaje_comision, activo: true }]);
+
+  if (!error) {
+    alert('¡Especialista registrado con éxito!');
+    cerrarModalEspecialista();
+    cargarSelects(); // Recarga automáticamente los selects de tu app
+  } else {
+    alert('Error al registrar especialista: ' + error.message);
+  }
+}
+
+// ==========================================
+// 3. GUARDAR SERVICIO EN SUPABASE
+// ==========================================
+async function guardarServicio(event) {
+  event.preventDefault();
+  const nombre = document.getElementById('inputNombreServicio').value;
+  const categoria = document.getElementById('inputCategoriaServicio').value;
+  const precio_eur = parseFloat(document.getElementById('inputPrecioServicio').value);
+
+  const { data, error } = await supabase
+    .from('servicios')
+    .insert([{ nombre, categoria, precio_eur }]);
+
+  if (!error) {
+    alert('¡Servicio registrado con éxito!');
+    cerrarModalServicio();
+    cargarSelects(); // Recarga automáticamente los selects de tu app
+  } else {
+    alert('Error al registrar servicio: ' + error.message);
+  }
+}
+
+// ==========================================
+// 4. TASA BCV EN TIEMPO REAL
+// ==========================================
+async function inicializarTasaBcvRealtime() {
+  // A. Cargar la tasa actual al iniciar
+  const { data, error } = await supabase
+    .from('configuracion')
+    .select('valor')
+    .eq('clave', 'tasa_bcv')
+    .single();
+
+  if (data && !error) {
+    const inputTasa = document.getElementById('inputTasaBcv'); // Asegúrate que tu input en el HTML tenga este ID
+    if (inputTasa) inputTasa.value = data.valor;
+  }
+
+  // B. Escuchar cambios en tiempo real vía Supabase Realtime
+  supabase
+    .channel('cambios-tasa-bcv')
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'configuracion', filter: 'clave=eq.tasa_bcv' },
+      (payload) => {
+        const inputTasa = document.getElementById('inputTasaBcv');
+        if (inputTasa && payload.new) {
+          inputTasa.value = payload.new.valor;
+          // Si tienes alguna función global que recalcule montos en bolívares, puedes llamarla aquí:
+          if (typeof recalcularMontos === 'function') recalcularMontos();
+        }
+      }
+    )
+    .subscribe();
+}
+
+// Llama a esta función cuando cargue la página dentro de tu script principal
+// inicializarTasaBcvRealtime();
+// ==========================================
+// CONTROL DE MODALES DE GESTIÓN (LISTAR / ELIMINAR)
+// ==========================================
+function abrirModalGestionServicios() {
+  document.getElementById('modalGestionServicios').classList.remove('hidden');
+  cargarServiciosAdmin();
+}
+
+function cerrarModalGestionServicios() {
+  document.getElementById('modalGestionServicios').classList.add('hidden');
+}
+
+function abrirModalGestionEspecialistas() {
+  document.getElementById('modalGestionEspecialistas').classList.remove('hidden');
+  cargarEspecialistasAdmin();
+}
+
+function cerrarModalGestionEspecialistas() {
+  document.getElementById('modalGestionEspecialistas').classList.add('hidden');
+}
+
+// ==========================================
+// CARGAR Y ELIMINAR SERVICIOS
+// ==========================================
+async function cargarServiciosAdmin() {
+  const contenedor = document.getElementById('listaServiciosAdmin');
+  contenedor.innerHTML = '<p class="text-center text-gray-400 py-4">Cargando servicios...</p>';
+
+  const { data, error } = await supabase.from('servicios').select('*').order('nombre');
+  
+  if (error) {
+    contenedor.innerHTML = '<p class="text-center text-red-500 py-4">Error al cargar servicios.</p>';
+    return;
+  }
+
+  if (data.length === 0) {
+    contenedor.innerHTML = '<p class="text-center text-gray-400 py-4">No hay servicios registrados.</p>';
+    return;
+  }
+
+  contenedor.innerHTML = '';
+  data.forEach(s => {
+    contenedor.innerHTML += `
+      <div class="flex justify-between items-center py-3 px-2 hover:bg-gray-50 rounded-lg transition">
+        <div>
+          <p class="font-medium text-slate-800 text-sm">${s.nombre}</p>
+          <span class="text-xs text-gray-500">${s.categoria || 'General'} • €${s.precio_eur}</span>
+        </div>
+        <button onclick="eliminarServicio('${s.id}')" class="bg-red-50 hover:bg-red-100 text-red-600 text-xs px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1">
+          🗑️ Eliminar
+        </button>
+      </div>
+    `;
+  });
+}
+
+async function eliminarServicio(id) {
+  if (!confirm('¿Estás seguro de que deseas eliminar este servicio?')) return;
+
+  const { error } = await supabase.from('servicios').delete().eq('id', id);
+  if (!error) {
+    alert('Servicio eliminado correctamente.');
+    cargarServiciosAdmin();
+    if (typeof cargarSelects === 'function') cargarSelects(); // Actualiza el select principal
+  } else {
+    alert('No se pudo eliminar el servicio: ' + error.message);
+  }
+}
+
+// ==========================================
+// CARGAR Y ELIMINAR ESPECIALISTAS
+// ==========================================
+async function cargarEspecialistasAdmin() {
+  const contenedor = document.getElementById('listaEspecialistasAdmin');
+  contenedor.innerHTML = '<p class="text-center text-gray-400 py-4">Cargando especialistas...</p>';
+
+  const { data, error } = await supabase.from('especialistas').select('*').order('nombre');
+  
+  if (error) {
+    contenedor.innerHTML = '<p class="text-center text-red-500 py-4">Error al cargar especialistas.</p>';
+    return;
+  }
+
+  if (data.length === 0) {
+    contenedor.innerHTML = '<p class="text-center text-gray-400 py-4">No hay especialistas registrados.</p>';
+    return;
+  }
+
+  contenedor.innerHTML = '';
+  data.forEach(e => {
+    contenedor.innerHTML += `
+      <div class="flex justify-between items-center py-3 px-2 hover:bg-gray-50 rounded-lg transition">
+        <div>
+          <p class="font-medium text-slate-800 text-sm">${e.nombre}</p>
+          <span class="text-xs text-gray-500">Comisión: ${e.porcentaje_comision}%</span>
+        </div>
+        <button onclick="eliminarEspecialista('${e.id}')" class="bg-red-50 hover:bg-red-100 text-red-600 text-xs px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1">
+          🗑️ Eliminar
+        </button>
+      </div>
+    `;
+  });
+}
+
+async function eliminarEspecialista(id) {
+  if (!confirm('¿Estás seguro de que deseas eliminar a este especialista?')) return;
+
+  const { error } = await supabase.from('especialistas').delete().eq('id', id);
+  if (!error) {
+    alert('Especialista eliminado correctamente.');
+    cargarEspecialistasAdmin();
+    if (typeof cargarSelects === 'function') cargarSelects(); // Actualiza el select principal
+  } else {
+    alert('No se pudo eliminar el especialista: ' + error.message);
+  }
+}
