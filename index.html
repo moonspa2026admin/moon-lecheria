@@ -20,7 +20,7 @@
           <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-400 border-2 border-white rounded-full"></div>
         </div>
         <div>
-          <h1 class="text-xl font-bold text-slate-800 tracking-tight"><MoonSpa class="Lecheria"></MoonSpa> · Control Administrativo</h1>
+          <h1 class="text-xl font-bold text-slate-800 tracking-tight">Moon · Control Administrativo</h1>
           <p class="text-xs text-rose-400 font-medium tracking-wide">Gestión Integral de Ventas, Servicios y Cierres (Tasa BCV - Euro)</p>
         </div>
       </div>
@@ -30,7 +30,7 @@
         <div class="flex items-center space-x-2 bg-pink-50/60 px-3 py-2 rounded-2xl border border-pink-100 shadow-2xs">
           <span class="text-xs font-semibold text-slate-600">Tasa BCV (€):</span>
           <input type="number" step="0.01" id="inputTasaBcv" class="w-20 bg-white border border-pink-200 rounded-xl px-2 py-1 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-rose-200 text-center font-medium" placeholder="0.00">
-          <button id="btnGuardarTasa" onclick="guardarTasaBcv()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs px-3.5 py-2 rounded-xl transition shadow-2xs font-medium">Actualizar</button>
+          <button id="btnGuardarTasa" class="bg-slate-900 hover:bg-slate-800 text-white text-xs px-3.5 py-2 rounded-xl transition shadow-2xs font-medium">Actualizar</button>
         </div>
       </div>
 
@@ -211,17 +211,17 @@
       </div>
       <p class="text-xs text-slate-500 mb-4">Seleccione la acción que desea realizar:</p>
       <div class="space-y-2.5">
-        <button onclick="abrirModalServicio()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs p-3 rounded-xl font-semibold flex items-center justify-between transition">
+        <button onclick="cerrarModalAdminOpciones(); abrirModalServicio();" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs p-3 rounded-xl font-semibold flex items-center justify-between transition">
           <span>➕ Registrar Nuevo Servicio</span> &rarr;
         </button>
-        <button onclick="abrirModalEspecialista()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs p-3 rounded-xl font-semibold flex items-center justify-between transition">
+        <button onclick="cerrarModalAdminOpciones(); abrirModalEspecialista();" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs p-3 rounded-xl font-semibold flex items-center justify-between transition">
           <span>➕ Registrar Nueva Especialista</span> &rarr;
         </button>
-        <button onclick="abrirModalGestionServicios()" class="w-full bg-rose-50 hover:bg-rose-100 text-slate-800 text-xs p-3 rounded-xl font-semibold flex items-center justify-between transition">
-          <span>⚙️ Administrar / Eliminar Servicios</span> &rarr;
+        <button onclick="cerrarModalAdminOpciones(); abrirModalGestionServicios();" class="w-full bg-rose-50 hover:bg-rose-100 text-slate-800 text-xs p-3 rounded-xl font-semibold flex items-center justify-between transition">
+          <span>⚙️️ Administrar / Eliminar Servicios</span> &rarr;
         </button>
-        <button onclick="abrirModalGestionEspecialistas()" class="w-full bg-rose-50 hover:bg-rose-100 text-slate-800 text-xs p-3 rounded-xl font-semibold flex items-center justify-between transition">
-          <span>⚙️️ Administrar / Eliminar Especialistas</span> &rarr;
+        <button onclick="cerrarModalAdminOpciones(); abrirModalGestionEspecialistas();" class="w-full bg-rose-50 hover:bg-rose-100 text-slate-800 text-xs p-3 rounded-xl font-semibold flex items-center justify-between transition">
+          <span>⚙️ Administrar / Eliminar Especialistas</span> &rarr;
         </button>
       </div>
     </div>
@@ -316,7 +316,7 @@
 
     function verificarAccesoAdmin() {
       let clave = prompt("Ingrese la clave administrativa:");
-      if (clave === "admin123") { // Puedes cambiar "admin123" por tu contraseña deseada
+      if (clave === "admin123") {
         document.getElementById('modalAdminOpciones').classList.remove('hidden');
       } else if (clave !== null) {
         alert("Clave incorrecta. Acceso denegado.");
@@ -324,6 +324,32 @@
     }
     function cerrarModalAdminOpciones() {
       document.getElementById('modalAdminOpciones').classList.add('hidden');
+    }
+
+    // Funciones globales auxiliares para asegurar apertura directa de modales y cierre del menú
+    function abrirModalServicio() {
+      document.getElementById('modalServicio').classList.remove('hidden');
+    }
+    function cerrarModalServicio() {
+      document.getElementById('modalServicio').classList.add('hidden');
+    }
+    function abrirModalEspecialista() {
+      document.getElementById('modalEspecialista').classList.remove('hidden');
+    }
+    function cerrarModalEspecialista() {
+      document.getElementById('modalEspecialista').classList.add('hidden');
+    }
+    function abrirModalGestionServicios() {
+      document.getElementById('modalGestionServicios').classList.remove('hidden');
+    }
+    function cerrarModalGestionServicios() {
+      document.getElementById('modalGestionServicios').classList.add('hidden');
+    }
+    function abrirModalGestionEspecialistas() {
+      document.getElementById('modalGestionEspecialistas').classList.remove('hidden');
+    }
+    function cerrarModalGestionEspecialistas() {
+      document.getElementById('modalGestionEspecialistas').classList.add('hidden');
     }
   </script>
 
