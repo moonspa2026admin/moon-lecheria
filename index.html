@@ -122,7 +122,18 @@
   <!-- ================================================= -->
   <!-- MODALES FLOTANTES -->
   <!-- ================================================= -->
-
+  <!-- BOTONES DE ACCIÓN EN PANTALLA GENERAL -->
+<div class="flex gap-3 my-4">
+  <button onclick="openModal('modalDiario')" class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition">
+    📋 Cierre Diario
+  </button>
+  <button onclick="openModal('modalSemanal')" class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition">
+    📅 Resumen Semanal
+  </button>
+  <button onclick="openModal('modalMensual')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition">
+    📊 Dashboard Mensual
+  </button>
+</div>
   <!-- Modal: Registrar Venta / Servicio (Flotante) -->
   <div id="modalVenta" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 overflow-y-auto">
     <div class="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl border border-slate-100 my-auto">
@@ -371,6 +382,244 @@
     function cerrarModalAdminOpciones() {
       document.getElementById('modalAdminOpciones').classList.add('hidden');
     }
+<!-- MODAL 1: CIERRE DIARIO -->
+<div id="modalDiario" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6">
+    <div class="flex justify-between items-center border-b pb-3 mb-4">
+      <div>
+        <h3 class="text-xl font-bold text-slate-800">Cierre Diario</h3>
+        <p class="text-xs text-slate-500" id="fechaDiario">Viernes, 21 de Agosto de 2026</p>
+      </div>
+      <button onclick="closeModal('modalDiario')" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+    </div>
+
+    <!-- Tabla de Clientes del Día -->
+    <div class="overflow-x-auto mb-6">
+      <table class="w-full text-sm text-left border-collapse">
+        <thead>
+          <tr class="bg-slate-100 text-slate-700 uppercase text-xs">
+            <th class="p-2 border">Nº</th>
+            <th class="p-2 border">Cliente</th>
+            <th class="p-2 border">Servicio</th>
+            <th class="p-2 border">Prof.</th>
+            <th class="p-2 border">Monto (€)</th>
+            <th class="p-2 border">Método Pago / Detalle</th>
+            <th class="p-2 border">Ref.</th>
+          </tr>
+        </thead>
+        <tbody id="tablaServiciosDiarios">
+          <!-- Ejemplo renderizado basado en tu foto -->
+          <tr class="border-b hover:bg-slate-50">
+            <td class="p-2 font-semibold text-slate-500">53</td>
+            <td class="p-2 font-medium">Desiree Salazar</td>
+            <td class="p-2">Manos y Pies Tradicionales</td>
+            <td class="p-2">Jhossy</td>
+            <td class="p-2 font-semibold">30.00 €</td>
+            <td class="p-2 text-xs">P.M: 336.30 Bs</td>
+            <td class="p-2 text-xs text-slate-500">9572</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Resumen de Comisiones y Caja -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border">
+      <div>
+        <h4 class="font-bold text-sm text-slate-700 mb-2 border-b pb-1">Comisiones por Profesional</h4>
+        <ul class="text-xs space-y-1 text-slate-600" id="listaComisiones">
+          <li>• <strong>Jhossy:</strong> 85.00 € (40%) = <span class="font-bold text-emerald-600">34.00 €</span></li>
+          <li>• <strong>Nicole:</strong> 25.00 € (40%) = 10.00 € + 1.50 € Prop. = <span class="font-bold text-emerald-600">11.50 €</span></li>
+          <li>• <strong>Fernanda:</strong> 47.00 € (40%) = <span class="font-bold text-emerald-600">18.80 €</span></li>
+        </ul>
+      </div>
+      <div class="flex flex-col justify-between border-t md:border-t-0 md:border-l pt-3 md:pt-0 md:pl-4">
+        <div>
+          <span class="text-xs text-slate-500 block">Total Recaudado el Día:</span>
+          <span class="text-lg font-extrabold text-slate-800">157.00 €</span>
+        </div>
+        <div class="mt-2">
+          <span class="text-xs text-slate-500 block">Cierre de Caja (Restando Nómina/Comisiones):</span>
+          <span class="text-xl font-black text-indigo-600">125.50 €</span>
+          <span class="text-xs block text-slate-500">(114.356,85 Bs)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 2: RESUMEN SEMANAL -->
+<div id="modalSemanal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto p-6">
+    <div class="flex justify-between items-center border-b pb-3 mb-4">
+      <div>
+        <h3 class="text-xl font-bold text-slate-800">Cierre Semanal</h3>
+        <div class="flex items-center gap-2 mt-1">
+          <label class="text-xs text-slate-500">Seleccionar Semana:</label>
+          <input type="week" id="semanaSelect" class="border rounded px-2 py-0.5 text-xs">
+        </div>
+      </div>
+      <button onclick="closeModal('modalSemanal')" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+    </div>
+
+    <!-- Matriz de Pago a Personal -->
+    <h4 class="font-bold text-sm text-slate-700 mb-2">Comisiones Semanales por Personal (€)</h4>
+    <div class="overflow-x-auto mb-6">
+      <table class="w-full text-xs text-center border-collapse">
+        <thead class="bg-slate-100 text-slate-700">
+          <tr>
+            <th class="p-2 border text-left">Especialista</th>
+            <th class="p-2 border">Sáb</th>
+            <th class="p-2 border">Mar</th>
+            <th class="p-2 border">Mié</th>
+            <th class="p-2 border">Jue</th>
+            <th class="p-2 border">Vie</th>
+            <th class="p-2 border font-bold bg-amber-100">Total (€)</th>
+            <th class="p-2 border font-bold bg-blue-100">Total (Bs)</th>
+          </tr>
+        </thead>
+        <tbody id="tablaNominaSemanal">
+          <tr class="border-b">
+            <td class="p-2 border font-bold text-left">Jhossy</td>
+            <td class="p-2 border">11.60</td>
+            <td class="p-2 border">18.80</td>
+            <td class="p-2 border">32.00</td>
+            <td class="p-2 border">46.80</td>
+            <td class="p-2 border">34.00</td>
+            <td class="p-2 border font-bold bg-amber-50">143.20 €</td>
+            <td class="p-2 border font-semibold bg-blue-50">115.132,80 Bs</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Desglose por Área y Métodos de Pago -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-lg border">
+      <div>
+        <h5 class="font-bold text-xs text-slate-700 uppercase border-b pb-1 mb-2">Ingresos por Área</h5>
+        <ul class="text-xs space-y-1">
+          <li class="flex justify-between"><span>Moon (Uñas):</span> <strong>587.00 €</strong></li>
+          <li class="flex justify-between"><span>Estilismo:</span> <strong>30.00 €</strong></li>
+          <li class="flex justify-between"><span>Faciales:</span> <strong>167.00 €</strong></li>
+        </ul>
+      </div>
+      <div>
+        <h5 class="font-bold text-xs text-slate-700 uppercase border-b pb-1 mb-2">Distribución de Pagos</h5>
+        <ul class="text-xs space-y-1">
+          <li class="flex justify-between"><span>Pago Móvil (Bs):</span> <strong>658.150 Bs</strong></li>
+          <li class="flex justify-between"><span>Efectivo (Cash):</span> <strong>25 %</strong></li>
+          <li class="flex justify-between"><span>Zelle:</span> <strong>50 %</strong></li>
+        </ul>
+      </div>
+      <div class="bg-indigo-900 text-white p-3 rounded-lg flex flex-col justify-between">
+        <div>
+          <span class="text-[10px] uppercase tracking-wider text-indigo-200">Balance Neto Semanal</span>
+          <div class="text-2xl font-black mt-1">377.79 €</div>
+        </div>
+        <div class="text-[11px] text-indigo-200 border-t border-indigo-700 pt-2 mt-2">
+          Cuentas por Cobrar Pendientes: <strong>25.00 €</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 3: DASHBOARD CIERRE DE MES -->
+<div id="modalMensual" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto p-6">
+    <div class="flex justify-between items-center border-b pb-3 mb-6">
+      <div>
+        <h3 class="text-2xl font-extrabold text-slate-800">Dashboard de Cierre Mensual</h3>
+        <p class="text-xs text-slate-500">Resumen consolidado de rendimiento financiero</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <input type="month" id="mesSelect" value="2026-08" class="border rounded-lg px-3 py-1.5 text-sm font-medium">
+        <button onclick="closeModal('modalMensual')" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+      </div>
+    </div>
+
+    <!-- KPIs Mensuales -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl">
+        <span class="text-xs font-semibold text-emerald-600 uppercase">Ingresos Totales</span>
+        <div class="text-2xl font-black text-emerald-900 mt-1" id="kpiIngresos">3.240,00 €</div>
+        <span class="text-[10px] text-emerald-700">Facturación bruta del mes</span>
+      </div>
+      <div class="bg-rose-50 border border-rose-200 p-4 rounded-xl">
+        <span class="text-xs font-semibold text-rose-600 uppercase">Nómina / Comisiones</span>
+        <div class="text-2xl font-black text-rose-900 mt-1" id="kpiNomina">1.450,00 €</div>
+        <span class="text-[10px] text-rose-700">Pago a especialistas</span>
+      </div>
+      <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl">
+        <span class="text-xs font-semibold text-amber-600 uppercase">Gastos Operativos</span>
+        <div class="text-2xl font-black text-amber-900 mt-1" id="kpiGastos">420,00 €</div>
+        <span class="text-[10px] text-amber-700">Insumos, servicios y local</span>
+      </div>
+      <div class="bg-indigo-50 border border-indigo-200 p-4 rounded-xl">
+        <span class="text-xs font-semibold text-indigo-600 uppercase">Ganancia Neta</span>
+        <div class="text-2xl font-black text-indigo-900 mt-1" id="kpiNeto">1.370,00 €</div>
+        <span class="text-[10px] text-indigo-700">Margen neto operativo</span>
+      </div>
+    </div>
+
+    <!-- Análisis de Categorías y Métodos de Pago -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="border rounded-xl p-4 bg-slate-50">
+        <h4 class="font-bold text-sm text-slate-800 mb-3">Distribución de Ingresos por Área</h4>
+        <div class="space-y-3 text-xs">
+          <div>
+            <div class="flex justify-between mb-1">
+              <span>Moon (Uñas & Pestanias)</span>
+              <span class="font-bold">2.100 € (65%)</span>
+            </div>
+            <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+              <div class="bg-indigo-600 h-full" style="width: 65%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between mb-1">
+              <span>Faciales & Piel</span>
+              <span class="font-bold">750 € (23%)</span>
+            </div>
+            <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+              <div class="bg-emerald-500 h-full" style="width: 23%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between mb-1">
+              <span>Estilismo & Cabello</span>
+              <span class="font-bold">390 € (12%)</span>
+            </div>
+            <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+              <div class="bg-amber-500 h-full" style="width: 12%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="border rounded-xl p-4 bg-slate-50">
+        <h4 class="font-bold text-sm text-slate-800 mb-3">Resumen de Cuentas y Liquidez</h4>
+        <div class="space-y-2 text-xs">
+          <div class="flex justify-between p-2 bg-white rounded border">
+            <span>Cobrado por Zelle:</span>
+            <strong class="text-slate-700">1.620,00 €</strong>
+          </div>
+          <div class="flex justify-between p-2 bg-white rounded border">
+            <span>Cobrado en Efectivo (€ / $):</span>
+            <strong class="text-slate-700">810,00 €</strong>
+          </div>
+          <div class="flex justify-between p-2 bg-white rounded border">
+            <span>Cobrado en Bs (Pago Móvil/Punto):</span>
+            <strong class="text-slate-700">650,00 € eq.</strong>
+          </div>
+          <div class="flex justify-between p-2 bg-rose-100 border border-rose-300 rounded text-rose-800 font-medium">
+            <span>Pendiente por Cobrar (Clientes):</span>
+            <strong>85,00 €</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
   </script>
 
   <!-- Script principal de la aplicación -->

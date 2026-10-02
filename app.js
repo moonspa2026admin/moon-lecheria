@@ -542,3 +542,30 @@ window.eliminarEspecialista = async function(idEspecialista) {
 
 // EXPOSICIÓN GLOBAL
 window.cargarSelects = cargarSelects;
+// Funciones para abrir y cerrar modales
+function openModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) modal.classList.add('hidden');
+}
+
+// Cerrar modales con la tecla ESC
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    ['modalDiario', 'modalSemanal', 'modalMensual'].forEach(closeModal);
+  }
+});
+
+// Cerrar al hacer clic en el fondo oscuro fuera del contenedor del modal
+window.addEventListener('click', (e) => {
+  ['modalDiario', 'modalSemanal', 'modalMensual'].forEach(id => {
+    const modal = document.getElementById(id);
+    if (e.target === modal) {
+      closeModal(id);
+    }
+  });
+});
