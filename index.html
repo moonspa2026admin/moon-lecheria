@@ -202,108 +202,72 @@
     </div>
   </div>
 
-  <!-- Modal: Menú Administrativo Protegido por Clave -->
-  <div id="modalAdminOpciones" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl border border-slate-100">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="text-base font-bold text-slate-900">⚙️ Panel de Gestión Administrativa</h3>
-        <button onclick="cerrarModalAdminOpciones()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+  <!-- Modal: Menú Administrativo Protegido por Clave (Completo) -->
+  <div id="modalAdminOpciones" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl w-full max-w-2xl shadow-2xl border border-slate-100 my-auto overflow-hidden">
+      
+      <!-- Encabezado -->
+      <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">⚙️</span>
+          <h3 class="font-bold text-slate-800 text-sm md:text-base">Panel de Gestión Administrativa</h3>
+        </div>
+        <button onclick="cerrarModalAdminOpciones()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
       </div>
-      <p class="text-xs text-slate-500 mb-4">Seleccione la acción que desea realizar:</p>
-      <div class="space-y-2.5">
-        <button onclick="cerrarModalAdminOpciones(); abrirModalServicio();" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs p-3 rounded-xl font-semibold flex items-center justify-between transition">
-          <span>➕ Registrar Nuevo Servicio</span> &rarr;
-        </button>
-        <button onclick="cerrarModalAdminOpciones(); abrirModalEspecialista();" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs p-3 rounded-xl font-semibold flex items-center justify-between transition">
-          <span>➕ Registrar Nueva Especialista</span> &rarr;
-        </button>
-        <button onclick="cerrarModalAdminOpciones(); abrirModalGestionServicios();" class="w-full bg-rose-50 hover:bg-rose-100 text-slate-800 text-xs p-3 rounded-xl font-semibold flex items-center justify-between transition">
-          <span>⚙️️ Administrar / Eliminar Servicios</span> &rarr;
-        </button>
-        <button onclick="cerrarModalAdminOpciones(); abrirModalGestionEspecialistas();" class="w-full bg-rose-50 hover:bg-rose-100 text-slate-800 text-xs p-3 rounded-xl font-semibold flex items-center justify-between transition">
-          <span>⚙️ Administrar / Eliminar Especialistas</span> &rarr;
+
+      <!-- Contenido / Formularios / Listas -->
+      <div class="p-6 max-h-[75vh] overflow-y-auto space-y-6 text-xs">
+        
+        <!-- Botones de Acción Rápida -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <button onclick="abrirModalServicio()" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs p-3 rounded-xl font-bold flex items-center justify-between transition shadow-xs">
+            <span>➕ Registrar Nuevo Servicio</span> &rarr;
+          </button>
+          <button onclick="abrirModalEspecialista()" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs p-3 rounded-xl font-bold flex items-center justify-between transition shadow-xs">
+            <span>➕ Registrar Nueva Especialista</span> &rarr;
+          </button>
+        </div>
+
+        <hr class="border-slate-100">
+
+        <!-- Lista de Servicios Registrados -->
+        <div>
+          <h4 class="font-bold text-slate-800 text-xs mb-2.5 flex items-center gap-1.5">
+            <span>💅</span> Catálogo de Servicios
+          </h4>
+          <div class="bg-slate-50/80 rounded-xl border border-slate-200 overflow-hidden">
+            <div id="listaServiciosAdmin" class="divide-y divide-slate-200 max-h-48 overflow-y-auto">
+              <p class="p-3 text-slate-400 text-center">Cargando servicios...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lista de Especialistas Registradas -->
+        <div>
+          <h4 class="font-bold text-slate-800 text-xs mb-2.5 flex items-center gap-1.5">
+            <span>👩‍🎨</span> Nómina de Especialistas
+          </h4>
+          <div class="bg-slate-50/80 rounded-xl border border-slate-200 overflow-hidden">
+            <div id="listaEspecialistasAdmin" class="divide-y divide-slate-200 max-h-48 overflow-y-auto">
+              <p class="p-3 text-slate-400 text-center">Cargando especialistas...</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Pie con Botón de Salir -->
+      <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
+        <span class="text-xs text-emerald-600 font-medium flex items-center gap-1">● Sesión Activa</span>
+        <button onclick="cerrarModalAdminOpciones()" class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs rounded-xl transition flex items-center gap-1.5">
+          <span>🚪</span> Cerrar Panel
         </button>
       </div>
+
     </div>
   </div>
 
-  <!-- Modal: Registrar Especialista -->
-  <div id="modalEspecialista" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="text-lg font-bold text-gray-800">Registrar Nueva Especialista</h3>
-        <button onclick="cerrarModalEspecialista()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
-      </div>
-      <form id="formEspecialista" onsubmit="guardarEspecialista(event)" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
-          <input type="text" id="inputNombreEspecialista" required class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-slate-900 outline-none text-xs" placeholder="Ej. María Pérez">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Porcentaje de Comisión (%)</label>
-          <input type="number" step="0.1" id="inputComisionEspecialista" required class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-slate-900 outline-none text-xs" placeholder="Ej. 50">
-        </div>
-        <div class="flex justify-end space-x-3 mt-6">
-          <button type="button" onclick="cerrarModalEspecialista()" class="px-4 py-2 border rounded-lg text-gray-600 text-xs hover:bg-gray-50">Cancelar</button>
-          <button type="submit" class="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs hover:bg-slate-800">Guardar Especialista</button>
-        </div>
-      </form>
-    </div>
-  </div>
 
-  <!-- Modal: Registrar Servicio -->
-  <div id="modalServicio" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="text-lg font-bold text-gray-800">Registrar Nuevo Servicio</h3>
-        <button onclick="cerrarModalServicio()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
-      </div>
-      <form id="formServicio" onsubmit="guardarServicio(event)" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Servicio</label>
-          <input type="text" id="inputNombreServicio" required class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-slate-900 outline-none text-xs" placeholder="Ej. Manicure Completa">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
-          <input type="text" id="inputCategoriaServicio" required class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-slate-900 outline-none text-xs" placeholder="Ej. Manicure">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Precio en Euros (€)</label>
-          <input type="number" step="0.01" id="inputPrecioServicio" required class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-slate-900 outline-none text-xs" placeholder="0.00">
-        </div>
-        <div class="flex justify-end space-x-3 mt-6">
-          <button type="button" onclick="cerrarModalServicio()" class="px-4 py-2 border rounded-lg text-gray-600 text-xs hover:bg-gray-50">Cancelar</button>
-          <button type="submit" class="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs hover:bg-slate-800">Guardar Servicio</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Modal: Gestionar / Eliminar Servicios -->
-  <div id="modalGestionServicios" class="fixed inset-0 bg-black/40 backdrop-blur-xs hidden flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl p-6 w-full max-w-2xl shadow-2xl border border-gray-100">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="text-lg font-bold text-slate-800">Catálogo de Servicios</h3>
-        <button onclick="cerrarModalGestionServicios()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
-      </div>
-      <div class="max-h-96 overflow-y-auto divide-y divide-gray-100" id="listaServiciosAdmin">
-        <!-- Se carga dinámicamente desde app.js -->
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: Gestionar / Eliminar Especialistas -->
-  <div id="modalGestionEspecialistas" class="fixed inset-0 bg-black/40 backdrop-blur-xs hidden flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl p-6 w-full max-w-2xl shadow-2xl border border-gray-100">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="text-lg font-bold text-slate-800">Nómina de Especialistas</h3>
-        <button onclick="cerrarModalGestionEspecialistas()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
-      </div>
-      <div class="max-h-96 overflow-y-auto divide-y divide-gray-100" id="listaEspecialistasAdmin">
-        <!-- Se carga dinámicamente desde app.js -->
-      </div>
-    </div>
-  </div>
 
   <!-- SCRIPTS DE CONTROL UI Y CLAVE ADMIN -->
   <script>

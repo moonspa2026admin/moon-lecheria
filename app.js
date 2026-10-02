@@ -220,23 +220,6 @@ async function cargarVentasDia() {
 // ==========================================
 // CONTROL DE MODALES
 // ==========================================
-function abrirModalEspecialista() {
-  document.getElementById('modalEspecialista').classList.remove('hidden');
-}
-
-function cerrarModalEspecialista() {
-  document.getElementById('modalEspecialista').classList.add('hidden');
-  document.getElementById('formEspecialista').reset();
-}
-
-function abrirModalServicio() {
-  document.getElementById('modalServicio').classList.remove('hidden');
-}
-
-function cerrarModalServicio() {
-  document.getElementById('modalServicio').classList.add('hidden');
-  document.getElementById('formServicio').reset();
-}
 
 async function guardarEspecialista(event) {
   event.preventDefault();
@@ -403,15 +386,18 @@ window.cerrarModalGestionServicios = cerrarModalGestionServicios;
 window.abrirModalGestionEspecialistas = abrirModalGestionEspecialistas;
 window.cerrarModalGestionEspecialistas = cerrarModalGestionEspecialistas;
 
-window.verificarAccesoAdmin = function() {
-  let clave = prompt("Ingrese la clave administrativa:");
-  if (clave === "admin123") {
-    document.getElementById('modalAdminOpciones').classList.remove('hidden');
-  } else if (clave !== null) {
-    alert("Clave incorrecta. Acceso denegado.");
-  }
-};
+function verificarAccesoAdmin() {
+      let clave = prompt("Ingrese la clave administrativa:");
+      if (clave === "admin123") {
+        document.getElementById('modalAdminOpciones').classList.remove('hidden');
+        // Ejecutar la carga de listas si las funciones existen en app.js
+        if (typeof cargarListaServiciosAdmin === 'function') cargarListaServiciosAdmin();
+        if (typeof cargarListaEspecialistasAdmin === 'function') cargarListaEspecialistasAdmin();
+      } else if (clave !== null) {
+        alert("Clave incorrecta. Acceso denegado.");
+      }
+    }
 
-window.cerrarModalAdminOpciones = function() {
-  document.getElementById('modalAdminOpciones').classList.add('hidden');
-};
+    function cerrarModalAdminOpciones() {
+      document.getElementById('modalAdminOpciones').classList.add('hidden');
+    }
