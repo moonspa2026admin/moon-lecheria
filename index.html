@@ -309,11 +309,11 @@
   <script>
     function abrirModalVenta() {
       document.getElementById('modalVenta').classList.remove('hidden');
-
-    // Si tienes una función en app.js para cargar los selects, invócala aquí:
-      if (typeof cargarServiciosYEspe === 'function') {
-        cargarServiciosYEspe();
+      if (typeof cargarSelects === 'function') {
+        cargarSelects();
+      }
     }
+
     function cerrarModalVenta() {
       document.getElementById('modalVenta').classList.add('hidden');
     }
@@ -326,37 +326,43 @@
         alert("Clave incorrecta. Acceso denegado.");
       }
     }
+
     function cerrarModalAdminOpciones() {
       document.getElementById('modalAdminOpciones').classList.add('hidden');
     }
 
-    // Funciones globales auxiliares para asegurar apertura directa de modales y cierre del menú
     function abrirModalServicio() {
       document.getElementById('modalServicio').classList.remove('hidden');
     }
+
     function cerrarModalServicio() {
       document.getElementById('modalServicio').classList.add('hidden');
     }
+
     function abrirModalEspecialista() {
       document.getElementById('modalEspecialista').classList.remove('hidden');
     }
+
     function cerrarModalEspecialista() {
       document.getElementById('modalEspecialista').classList.add('hidden');
     }
+
     function abrirModalGestionServicios() {
       document.getElementById('modalGestionServicios').classList.remove('hidden');
     }
+
     function cerrarModalGestionServicios() {
       document.getElementById('modalGestionServicios').classList.add('hidden');
     }
+
     function abrirModalGestionEspecialistas() {
       document.getElementById('modalGestionEspecialistas').classList.remove('hidden');
     }
+
     function cerrarModalGestionEspecialistas() {
       document.getElementById('modalGestionEspecialistas').classList.add('hidden');
     }
   </script>
-
   <!-- Script principal de la aplicación -->
   <script type="module" src="./app.js"></script>
 </body>
