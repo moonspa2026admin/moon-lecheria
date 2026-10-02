@@ -91,7 +91,27 @@ function autocompletarPrecioServicio(e) {
     calcularBolivares();
   }
 }
+async function cargarServiciosYEspe() {
+  // 1. Cargar servicios desde Supabase
+  const { data: servicios, error: errServ } = await supabase.from('servicios').select('*');
+  const selectServicio = document.getElementById('selectServicio');
+  if (servicios && selectServicio) {
+    selectServicio.innerHTML = '<option value="">Seleccione un servicio...</option>';
+    servicios.forEach(s => {
+      selectServicio.innerHTML += `<option value="${s.id}" data-precio="${s.precio}">${s.nombre} (€${s.precio})</option>`;
+    });
+  }
 
+  // 2. Cargar especialistas desde Supabase
+  const { data: especialistas, error: errEsp } = await supabase.from('especialistas').select('*');
+  const selectEspecialista = document.getElementById('selectEspecialista');
+  if (especialistas && selectEspecialista) {
+    selectEspecialista.innerHTML = '<option value="">Seleccione una especialista...</option>';
+    especialistas.forEach(e => {
+      selectEspecialista.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
+    });
+  }
+}
 // 3. CALCULAR BOLÍVARES AUTOMÁTICAMENTE
 function calcularBolivares() {
   const montoEur = parseFloat(document.getElementById('montoEur').value) || 0;

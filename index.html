@@ -309,6 +309,10 @@
   <script>
     function abrirModalVenta() {
       document.getElementById('modalVenta').classList.remove('hidden');
+
+    // Si tienes una función en app.js para cargar los selects, invócala aquí:
+      if (typeof cargarServiciosYEspe === 'function') {
+        cargarServiciosYEspe();
     }
     function cerrarModalVenta() {
       document.getElementById('modalVenta').classList.add('hidden');
