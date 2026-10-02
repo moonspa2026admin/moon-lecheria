@@ -577,7 +577,39 @@ window.eliminarEspecialista = async function(idEspecialista) {
     cargarSelects();
   }
 };
+async function obtenerTasaEuroBCV() {
+  const elementoMonto = document.getElementById('tasa-euro-monto');
+  
+  try {
+    // API pública para consulta de tasas BCV actualizadas en tiempo real
+    const response = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar?page=bcv');
+    const data = await response.json();
+    
+    // Obtenemos el valor de la tasa del Euro BCV
+    const euroData = data.monedas?.eur || data.eur;
+    
+    if (euroData && euroData.price) {
+      const tasaFormateada = new Intl.NumberFormat('es-VE', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 4
+      }).format(euroData.price);
 
+      elementoMonto.textContent = `${tasaFormateada} Bs.`;
+    } else {
+      elementoMonto.textContent = "No disponible";
+    }
+  } catch (error) {
+    console.error('Error al obtener la tasa del Euro BCV:', error);
+    elementoMonto.textContent = "Error al conectar";
+  }
+}
+
+// Ejecutar al cargar la interfaz
+document.addEventListener('DOMContentLoaded', () => {
+  obtenerTasaEuroBCV();
+  // Recargar automáticamente cada 10 minutos (600,000 ms)
+  setInterval(obtenerTasaEuroBCV, 600000);
+});
 // LISTENERS DE TECLADO Y CLIC FUERA DEL MODAL
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
