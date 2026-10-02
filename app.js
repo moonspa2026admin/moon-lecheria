@@ -245,7 +245,7 @@ async function cargarVentasDia() {
   }
 }
 
-// 6. DETALLE POR ESPECIALISTA
+// 6. DETALLE POR ESPECIALISTA (MODAL TÁCTIL)
 window.verDetalleEspecialista = function(nombreEspecialista) {
   const serviciosEsp = ventasHoyCache.filter(v => {
     const espNom = v.especialistas ? v.especialistas.nombre : 'General';
@@ -260,50 +260,77 @@ window.verDetalleEspecialista = function(nombreEspecialista) {
 
   if (!tbody) return;
 
-  modalNombre.textContent = `Detalle: ${nombreEspecialista}`;
+  if (modalNombre) modalNombre.textContent = `Detalle: ${nombreEspecialista}`;
 
   if (serviciosEsp.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">No hay registros para esta especialista hoy.</td></tr>`;
-    modalRecaudado.textContent = '0.00 €';
-    modalComision.textContent = '0.00 €';
-  } else {
-    let totalRecaudado = 0;
-    let totalComision = 0;
-    let pctComision = serviciosEsp[0].especialistas ? parseFloat(serviciosEsp[0].especialistas.porcentaje_comision) : 40;
+    tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">No hay registros para esta especialista hoy.</td></tr>`;
+    if (modalRecaudado) modalRecaudado.textContent = '€0.00';
+    if (modalComision) modalComision.textContent = '€0.00';
+    return;
+  }
 
+  let totalRecaudado = 0;
+  let totalComisiones = 0;
+  let totalPropinas = 0;
+  let pctComision = serviciosEsp[0].especialistas ? parseFloat(serviciosEsp[0].especialistas.porcentaje_comision) : 40;
+
+  if (modalSubtitulo) {
     modalSubtitulo.textContent = `${serviciosEsp.length} servicio(s) realizado(s) hoy (Comisión: ${pctComision}%)`;
+  }
 
-    tbody.innerHTML = '';
-    serviciosEsp.forEach(s => {
-      const monto = parseFloat(s.monto_eur || 0);
-      const comisionUnit = monto * (pctComision / 100);
+  tbody.innerHTML = '';
+  serviciosEsp.forEach(s => {
+    const monto = parseFloat(s.monto_eur || 0);
+    const propina = parseFloat(s.propina_eur || 0);
+    const comisionUnit = monto * (pctComision / 100);
 
-      totalRecaudado += monto;
-      totalComision += comisionUnit;
+    totalRecaudado += monto;
+    totalComisiones += comisionUnit;
+    totalPropinas += propina;
 
-      tbody.innerHTML += `
-        <tr class="hover:bg-slate-50 transition border-b border-slate-100">
-          <td class="p-3 font-semibold text-slate-800 capitalize">${s.nombre_clienta}</td>
-          <td class="p-3 font-medium">${s.servicios ? s.servicios.nombre : 'Servicio'}</td>
-          <td class="p-3">${s.metodo_pago} <span class="text-[10px] text-slate-400 block">${s.referencia_pago || 'Sin Ref.'}</span></td>
-          <td class="p-3 text-right font-bold text-slate-800">€${monto.toFixed(2)}</td>
-          <td class="p-3 text-right font-extrabold text-emerald-600 bg-emerald-50/30">€${comisionUnit.toFixed(2)}</td>
-        </tr>
-      `;
-    });
+    tbody.innerHTML += `
+      <tr class="hover:bg-slate-50 transition border-b border-slate-100 text-xs">
+        <td class="p-3 font-semibold text-slate-800 capitalize">${s.nombre_clienta || 'S/N'}</td>
+        <td class="p-3 font-medium">${s.servicios ? s.servicios.nombre : 'Servicio'}</td>
+        <td class="p-3">${s.metodo_pago || 'Cash'} <span class="text-[10px] text-slate-400 block">${s.referencia_pago || 'Sin Ref.'}</span></td>
+        <td class="p-3 text-right font-bold text-slate-800">€${monto.toFixed(2)}</td>
+        <td class="p-3 text-right font-semibold text-amber-600 bg-amber-50/30">€${propina.toFixed(2)}</td>
+        <td class="p-3 text-right font-extrabold text-emerald-600 bg-emerald-50/30">€${comisionUnit.toFixed(2)}</td>
+      </tr>
+    `;
+  });
 
+  const totalACobrarEur = totalComisiones + totalPropinas;
+  const totalACobrarBs = totalACobrarEur * (tasaActual || 0);
+
+  if (modalRecaudado) {
     modalRecaudado.textContent = `€${totalRecaudado.toFixed(2)}`;
-    modalComision.textContent = `€${totalComision.toFixed(2)}`;
+  }
+
+  if (modalComision) {
+    modalComision.innerHTML = `
+      <div class="text-right">
+        <span class="text-emerald-600 font-extrabold text-base">€${totalACobrarEur.toFixed(2)}</span>
+        <span class="text-xs text-slate-500 block font-normal">
+          (Comisión: €${totalComisiones.toFixed(2)} + Propina: €${totalPropinas.toFixed(2)})
+        </span>
+        <span class="text-xs text-blue-600 font-bold block mt-0.5">
+          ${totalACobrarBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs
+        </span>
+      </div>
+    `;
   }
 
   window.openModal('modalDetalleEspecialista');
 };
 
-// 7. RENDER DE CIERRES (DIARIO Y SEMANAL)
+// 7. CORRECCIÓN DE TOTALES EN CIERRE DIARIO
 window.renderCierreDiario = function() {
   const tbody = document.getElementById('tablaServiciosDiarios');
   const listaComisiones = document.getElementById('listaComisiones');
   const elFechaDiario = document.getElementById('fechaDiario');
+  const elTotalRecaudado = document.getElementById('cierreTotalRecaudado');
+  const elCierreCaja = document.getElementById('cierreCajaFinal');
   
   if (!tbody) return;
 
@@ -322,8 +349,13 @@ window.renderCierreDiario = function() {
   if (ventasHoy.length === 0) {
     tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">No se han registrado ventas hoy.</td></tr>`;
     if (listaComisiones) listaComisiones.innerHTML = '<li class="text-slate-400">• Sin comisiones ni propinas hoy</li>';
+    if (elTotalRecaudado) elTotalRecaudado.textContent = '0.00 €';
+    if (elCierreCaja) elCierreCaja.textContent = '0.00 €';
     return;
   }
+
+  let totalRecaudadoDia = 0;
+  let totalComisionesYPropinasPagar = 0;
 
   tbody.innerHTML = ventasHoy.map((v, index) => {
     const propina = parseFloat(v.propina_eur) || 0;
@@ -331,6 +363,8 @@ window.renderCierreDiario = function() {
     const espNombre = v.especialistas ? v.especialistas.nombre : 'Sin Asignar';
     const montoEur = parseFloat(v.monto_eur) || 0;
     const montoBs = parseFloat(v.monto_ves) || 0;
+
+    totalRecaudadoDia += montoEur;
 
     return `
       <tr class="border-b hover:bg-slate-50 text-xs">
@@ -351,7 +385,7 @@ window.renderCierreDiario = function() {
     const monto = parseFloat(v.monto_eur) || 0;
     const propina = parseFloat(v.propina_eur) || 0;
     const prof = v.especialistas ? v.especialistas.nombre : 'Sin Asignar';
-    const pct = v.especialistas ? parseFloat(v.especialistas.porcentaje_comision) : 50;
+    const pct = v.especialistas ? parseFloat(v.especialistas.porcentaje_comision) : 40;
 
     if (!acumuladoProf[prof]) {
       acumuladoProf[prof] = { totalServicios: 0, propinas: 0, pct: pct };
@@ -367,6 +401,7 @@ window.renderCierreDiario = function() {
       const item = acumuladoProf[p];
       const pagoComision = (item.totalServicios * item.pct) / 100;
       const totalAPagar = pagoComision + item.propinas;
+      totalComisionesYPropinasPagar += totalAPagar;
 
       htmlComisiones += `
         <li class="mb-1">• <strong>${p}:</strong> 
@@ -378,45 +413,11 @@ window.renderCierreDiario = function() {
 
     listaComisiones.innerHTML = htmlComisiones;
   }
-};
 
-window.renderCierreSemanal = function() {
-  const tbody = document.getElementById('tablaNominaSemanal');
-  if (!tbody) return;
+  const saldoNetoCaja = totalRecaudadoDia - totalComisionesYPropinasPagar;
 
-  const ventas = window.ventas || [];
-  const especialistas = window.especialistas || [];
-
-  if (especialistas.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400">No hay especialistas registradas.</td></tr>`;
-    return;
-  }
-
-  let htmlTabla = '';
-
-  especialistas.forEach(esp => {
-    const ventasEsp = ventas.filter(v => (v.especialistas ? v.especialistas.nombre : '') === esp.nombre);
-    
-    const totalVendidoEur = ventasEsp.reduce((acc, v) => acc + (parseFloat(v.monto_eur) || 0), 0);
-    const totalPropinasEur = ventasEsp.reduce((acc, v) => acc + (parseFloat(v.propina_eur) || 0), 0);
-    
-    const pctComision = parseFloat(esp.porcentaje_comision) || 50;
-    const totalComisionEur = (totalVendidoEur * pctComision) / 100;
-    const totalCobroEsp = totalComisionEur + totalPropinasEur;
-    const totalBs = totalCobroEsp * (tasaActual || 1);
-
-    htmlTabla += `
-      <tr class="border-b text-xs">
-        <td class="p-2 border font-bold text-left capitalize">${esp.nombre}</td>
-        <td class="p-2 border" colspan="4">${ventasEsp.length} servicio(s)</td>
-        <td class="p-2 border text-amber-600 font-medium">+${totalPropinasEur.toFixed(2)} € propina</td>
-        <td class="p-2 border font-bold bg-amber-50">${totalCobroEsp.toFixed(2)} €</td>
-        <td class="p-2 border font-semibold bg-blue-50">${totalBs.toLocaleString('es-VE', {minimumFractionDigits: 2})} Bs</td>
-      </tr>
-    `;
-  });
-
-  tbody.innerHTML = htmlTabla;
+  if (elTotalRecaudado) elTotalRecaudado.textContent = `${totalRecaudadoDia.toFixed(2)} €`;
+  if (elCierreCaja) elCierreCaja.textContent = `${saldoNetoCaja.toFixed(2)} €`;
 };
 
 // 8. GESTIÓN DE MODALES
