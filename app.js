@@ -61,9 +61,8 @@ async function guardarTasaBcv() {
   }
 }
 
-// 2. CARGAR SELECTS (SERVICIOS Y ESPECIALISTAS)
+// 2. CARGAR SELECTS
 async function cargarSelects() {
-  // Cargar Servicios
   const { data: servs, error: errServ } = await supabase.from('servicios').select('*');
   if (!errServ && servs) {
     serviciosData = servs;
@@ -77,7 +76,6 @@ async function cargarSelects() {
     }
   }
 
-  // Cargar Especialistas
   const { data: esps, error: errEsp } = await supabase.from('especialistas').select('*').eq('activo', true);
   if (!errEsp && esps) {
     const selectEsp = document.getElementById('selectEspecialista');
@@ -145,15 +143,15 @@ async function registrarVenta(e) {
     alert("¡Venta registrada con éxito!");
     document.getElementById('formVenta').reset();
     document.getElementById('montoBvInput').value = '0.00 Bs';
-    if (typeof window.cerrarModalVenta === 'function') window.cerrarModalVenta();
+    window.cerrarModalVenta();
     cargarVentasDia();
   }
 }
 
 // 5. CARGAR VENTAS DEL DÍA Y CALCULAR CIERRES
 async function cargarVentasDia() {
-  const hoyInicio = new Date();
-  hoyInicio.setHours(0, 0, 0, 0);
+  const hoy = new Date();
+  const fechaHoyStr = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0') + 'T00:00:00';
 
   const { data: ventas, error } = await supabase
     .from('ventas_diarias')
@@ -162,7 +160,7 @@ async function cargarVentasDia() {
       servicios (nombre, categoria),
       especialistas (nombre, porcentaje_comision)
     `)
-    .gte('fecha', hoyInicio.toISOString())
+    .gte('fecha', fechaHoyStr)
     .order('fecha', { ascending: false });
 
   const tbody = document.getElementById('tablaVentasBody');
@@ -230,10 +228,58 @@ async function cargarVentasDia() {
   }
 }
 
-// ==========================================
-// REGISTRO DE SERVICIOS Y ESPECIALISTAS
-// ==========================================
+// GESTIÓN DE MODALES (EXPOSICIÓN GLOBAL)
+window.openModal = function(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) modal.classList.remove('hidden');
+};
 
+window.closeModal = function(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) modal.classList.add('hidden');
+};
+
+window.abrirModalVenta = function() {
+  window.openModal('modalVenta');
+  cargarSelects();
+};
+
+window.cerrarModalVenta = function() {
+  window.closeModal('modalVenta');
+};
+
+window.verificarAccesoAdmin = function() {
+  let clave = prompt("Ingrese la clave administrativa:");
+  if (clave === "admin123") {
+    window.openModal('modalAdminOpciones');
+    window.cargarListaServiciosAdmin();
+    window.cargarListaEspecialistasAdmin();
+  } else if (clave !== null) {
+    alert("Clave incorrecta. Acceso denegado.");
+  }
+};
+
+window.cerrarModalAdminOpciones = function() {
+  window.closeModal('modalAdminOpciones');
+};
+
+window.abrirModalServicio = function() {
+  window.openModal('modalServicio');
+};
+
+window.cerrarModalServicio = function() {
+  window.closeModal('modalServicio');
+};
+
+window.abrirModalEspecialista = function() {
+  window.openModal('modalEspecialista');
+};
+
+window.cerrarModalEspecialista = function() {
+  window.closeModal('modalEspecialista');
+};
+
+// ADMINISTRACIÓN DE SERVICIOS Y ESPECIALISTAS
 window.guardarServicio = async function(event) {
   if (event) event.preventDefault();
 
@@ -255,12 +301,10 @@ window.guardarServicio = async function(event) {
 
     alert("¡Servicio guardado con éxito!");
     document.getElementById('formServicio')?.reset();
-    if (typeof window.cerrarModalServicio === 'function') window.cerrarModalServicio();
+    window.cerrarModalServicio();
 
     cargarSelects();
-    if (typeof window.cargarListaServiciosAdmin === 'function') {
-      window.cargarListaServiciosAdmin();
-    }
+    window.cargarListaServiciosAdmin();
   } catch (err) {
     console.error("Error al guardar servicio:", err);
     alert("No se pudo guardar el servicio: " + err.message);
@@ -291,21 +335,15 @@ window.guardarEspecialista = async function(event) {
 
     alert("¡Especialista registrada con éxito!");
     document.getElementById('formEspecialista')?.reset();
-    if (typeof window.cerrarModalEspecialista === 'function') window.cerrarModalEspecialista();
+    window.cerrarModalEspecialista();
 
     cargarSelects();
-    if (typeof window.cargarListaEspecialistasAdmin === 'function') {
-      window.cargarListaEspecialistasAdmin();
-    }
+    window.cargarListaEspecialistasAdmin();
   } catch (err) {
     console.error("Error al guardar especialista:", err);
     alert("No se pudo guardar la especialista: " + err.message);
   }
 };
-
-// ==========================================
-// MÓDULO ADMINISTRATIVO (LISTAS Y EDICIÓN)
-// ==========================================
 
 window.cargarListaServiciosAdmin = async function() {
   const container = document.getElementById('listaServiciosAdmin');
@@ -540,32 +578,18 @@ window.eliminarEspecialista = async function(idEspecialista) {
   }
 };
 
-// EXPOSICIÓN GLOBAL
-window.cargarSelects = cargarSelects;
-// Funciones para abrir y cerrar modales
-function openModal(modalId) {
-  const modal = document.getElementById(modalId);
-  if (modal) modal.classList.remove('hidden');
-}
-
-function closeModal(modalId) {
-  const modal = document.getElementById(modalId);
-  if (modal) modal.classList.add('hidden');
-}
-
-// Cerrar modales con la tecla ESC
+// LISTENERS DE TECLADO Y CLIC FUERA DEL MODAL
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    ['modalDiario', 'modalSemanal', 'modalMensual'].forEach(closeModal);
+    ['modalDiario', 'modalSemanal', 'modalMensual', 'modalVenta', 'modalAdminOpciones', 'modalServicio', 'modalEspecialista'].forEach(window.closeModal);
   }
 });
 
-// Cerrar al hacer clic en el fondo oscuro fuera del contenedor del modal
 window.addEventListener('click', (e) => {
-  ['modalDiario', 'modalSemanal', 'modalMensual'].forEach(id => {
+  ['modalDiario', 'modalSemanal', 'modalMensual', 'modalVenta', 'modalAdminOpciones', 'modalServicio', 'modalEspecialista'].forEach(id => {
     const modal = document.getElementById(id);
     if (e.target === modal) {
-      closeModal(id);
+      window.closeModal(id);
     }
   });
 });
