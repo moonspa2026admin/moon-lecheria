@@ -385,63 +385,127 @@ window.abrirModalGestionServicios = abrirModalGestionServicios;
 window.cerrarModalGestionServicios = cerrarModalGestionServicios;
 window.abrirModalGestionEspecialistas = abrirModalGestionEspecialistas;
 window.cerrarModalGestionEspecialistas = cerrarModalGestionEspecialistas;
-// Agrega o ajusta estas funciones en app.js para renderizar los datos dentro de las listas del modal
+
+// Renderizar servicios agrupados por categorías con edición de precio
 window.cargarListaServiciosAdmin = async function() {
   const container = document.getElementById('listaServiciosAdmin');
   if (!container) return;
 
-  const { data: servicios, error } = await supabase.from('servicios').select('*').order('nombre');
-  
+  const { data: servicios, error } = await supabase
+    .from('servicios')
+    .select('*')
+    .order('categoria')
+    .order('nombre');
+
   if (error || !servicios || servicios.length === 0) {
     container.innerHTML = `<p class="p-3 text-slate-400 text-center">No hay servicios registrados.</p>`;
     return;
   }
 
-  container.innerHTML = servicios.map(s => `
-    <div class="flex items-center justify-between p-3 text-xs hover:bg-slate-100/50">
-      <div>
-        <p class="font-bold text-slate-800">${s.nombre}</p>
-        <p class="text-slate-400 font-medium">€${parseFloat(s.precio || 0).toFixed(2)}</p>
+  // Definir las categorías fijas
+  const categoriasFijas = ['Uñas', 'Estilismo', 'Extras'];
+
+  // Agrupar los servicios por categoría
+  const agrupados = {};
+  
+  // Inicializar grupos conocidos
+  categoriasFijas.forEach(cat => agrupados[cat] = []);
+
+  // Agrupar data de la base de datos
+  servicios.forEach(s => {
+    // Normalizar nombre de categoría o enviar a Extras si no coincide
+    let catNormalizada = s.categoria ? s.categoria.trim() : 'Extras';
+    if (!agrupados[catNormalizada]) {
+      agrupados[catNormalizada] = [];
+    }
+    agrupados[catNormalizada].push(s);
+  });
+
+  // Renderizar HTML agrupado
+  let htmlContent = '';
+
+  Object.keys(agrupados).forEach(categoria => {
+    const lista = agrupados[categoria];
+    if (lista.length === 0) return; // Ocultar categoría si no tiene elementos
+
+    htmlContent += `
+      <div class="bg-slate-100/70 px-3 py-1.5 font-bold text-slate-700 text-[11px] uppercase tracking-wider border-y border-slate-200/80 flex items-center justify-between">
+        <span>📂 ${categoria}</span>
+        <span class="text-[10px] text-slate-400 font-normal">(${lista.length})</span>
       </div>
-      <button onclick="eliminarServicio('${s.id}')" class="text-rose-500 hover:text-rose-700 font-bold">Eliminar</button>
-    </div>
-  `).join('');
+      <div class="divide-y divide-slate-100 bg-white">
+    `;
+
+    lista.forEach(s => {
+      htmlContent += `
+        <div class="flex items-center justify-between p-2.5 text-xs hover:bg-slate-50 transition">
+          <div class="flex-1 pr-2">
+            <p class="font-semibold text-slate-800 capitalize">${s.nombre}</p>
+          </div>
+          
+          <!-- Edición de Precio e Interacción -->
+          <div class="flex items-center gap-2">
+            <div class="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 focus-within:border-slate-900 transition">
+              <span class="text-slate-400 font-medium text-xs mr-1">€</span>
+              <input 
+                type="number" 
+                step="0.01" 
+                value="${parseFloat(s.precio || 0).toFixed(2)}" 
+                id="inputPrecio_${s.id}"
+                class="w-16 bg-transparent text-slate-800 font-bold text-xs text-right outline-none"
+              />
+            </div>
+
+            <button 
+              onclick="actualizarPrecioServicio('${s.id}')" 
+              class="bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold px-2 py-1.5 rounded-lg transition"
+              title="Guardar nuevo monto"
+            >
+              💾
+            </button>
+
+            <button 
+              onclick="eliminarServicio('${s.id}')" 
+              class="text-rose-500 hover:text-rose-700 font-bold px-1 text-xs"
+              title="Eliminar servicio"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      `;
+    });
+
+    htmlContent += `</div>`;
+  });
+
+  container.innerHTML = htmlContent || `<p class="p-3 text-slate-400 text-center">No hay servicios registrados.</p>`;
 };
 
-window.cargarListaEspecialistasAdmin = async function() {
-  const container = document.getElementById('listaEspecialistasAdmin');
-  if (!container) return;
+// Función para guardar la modificación de precio en Supabase
+window.actualizarPrecioServicio = async function(idServicio) {
+  const input = document.getElementById(`inputPrecio_${idServicio}`);
+  if (!input) return;
 
-  const { data: especialistas, error } = await supabase.from('especialistas').select('*').order('nombre');
-  
-  if (error || !especialistas || especialistas.length === 0) {
-    container.innerHTML = `<p class="p-3 text-slate-400 text-center">No hay especialistas registradas.</p>`;
+  const nuevoPrecio = parseFloat(input.value);
+
+  if (isNaN(nuevoPrecio) || nuevoPrecio < 0) {
+    alert("Por favor, ingrese un monto válido.");
     return;
   }
 
-  container.innerHTML = especialistas.map(e => `
-    <div class="flex items-center justify-between p-3 text-xs hover:bg-slate-100/50">
-      <div>
-        <p class="font-bold text-slate-800">${e.nombre}</p>
-        <p class="text-slate-400 font-medium">Comisión: ${e.porcentaje_comision || e.comision || 0}%</p>
-      </div>
-      <button onclick="eliminarEspecialista('${e.id}')" class="text-rose-500 hover:text-rose-700 font-bold">Eliminar</button>
-    </div>
-  `).join('');
+  const { error } = await supabase
+    .from('servicios')
+    .update({ precio: nuevoPrecio })
+    .eq('id', idServicio);
+
+  if (error) {
+    alert("Error al actualizar el precio: " + error.message);
+  } else {
+    // Feedback visual momentáneo
+    input.classList.add('bg-emerald-100', 'text-emerald-800');
+    setTimeout(() => {
+      input.classList.remove('bg-emerald-100', 'text-emerald-800');
+    }, 1000);
+  }
 };
-
-function verificarAccesoAdmin() {
-      let clave = prompt("Ingrese la clave administrativa:");
-      if (clave === "admin123") {
-        document.getElementById('modalAdminOpciones').classList.remove('hidden');
-        // Ejecutar la carga de listas si las funciones existen en app.js
-        if (typeof cargarListaServiciosAdmin === 'function') cargarListaServiciosAdmin();
-        if (typeof cargarListaEspecialistasAdmin === 'function') cargarListaEspecialistasAdmin();
-      } else if (clave !== null) {
-        alert("Clave incorrecta. Acceso denegado.");
-      }
-    }
-
-    function cerrarModalAdminOpciones() {
-      document.getElementById('modalAdminOpciones').classList.add('hidden');
-    }
