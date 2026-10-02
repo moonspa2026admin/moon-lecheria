@@ -3,63 +3,58 @@ import { supabase } from './supabaseClient.js';
 // Variables globales de estado
 let tasaActual = 0;
 let serviciosData = [];
+let ventasHoyCache = [];
 
+// INICIALIZACIÓN
 document.addEventListener('DOMContentLoaded', async () => {
   const hoyStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const fechaLabel = document.getElementById('fechaActualLabel');
   if (fechaLabel) fechaLabel.textContent = hoyStr;
 
-  await cargarTasaBcv();
+  await cargarTasaBcvEnLinea();
   await cargarSelects();
   await cargarVentasDia();
 
   // Event Listeners
-  document.getElementById('btnGuardarTasa')?.addEventListener('click', guardarTasaBcv);
   document.getElementById('montoEur')?.addEventListener('input', calcularBolivares);
   document.getElementById('selectServicio')?.addEventListener('change', autocompletarPrecioServicio);
   document.getElementById('formVenta')?.addEventListener('submit', registrarVenta);
 });
 
-// 1. CARGAR TASA BCV
-async function cargarTasaBcv() {
-  try {
-    const { data, error } = await supabase
-      .from('tasa_bcv')
-      .select('*')
-      .order('id', { ascending: false })
-      .limit(1);
+// 1. OBTENER TASA EURO BCV EN TIEMPO REAL
+async function cargarTasaBcvEnLinea() {
+  const elMonto = document.getElementById('tasa-euro-monto');
 
-    if (data && data.length > 0) {
-      tasaActual = parseFloat(data[0].monto_ves);
-      const inputTasa = document.getElementById('inputTasaBcv');
-      if (inputTasa) inputTasa.value = tasaActual;
+  try {
+    // 1. Consulta principal a API PyDolarVenezuela
+    let res = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar?page=bcv');
+    let data = await res.json();
+    let euroValor = data.monedas?.eur?.price || data.eur?.price;
+
+    // 2. Respaldo directo a CriptoYa
+    if (!euroValor) {
+      res = await fetch('https://criptoya.com/api/bcv');
+      data = await res.json();
+      euroValor = data.eur;
+    }
+
+    if (euroValor && euroValor > 0) {
+      tasaActual = parseFloat(euroValor);
+      if (elMonto) {
+        elMonto.textContent = `${tasaActual.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs`;
+      }
       calcularBolivares();
+    } else {
+      if (elMonto) elMonto.textContent = 'No disponible';
     }
   } catch (err) {
-    console.error("Error al cargar la tasa BCV:", err);
+    console.error('Error al conectar con la tasa del BCV:', err);
+    if (elMonto) elMonto.textContent = 'Error de conexión';
   }
 }
 
-async function guardarTasaBcv() {
-  const nuevaTasa = parseFloat(document.getElementById('inputTasaBcv').value);
-  if (!nuevaTasa || nuevaTasa <= 0) {
-    alert("Por favor ingresa una tasa válida.");
-    return;
-  }
-
-  const { error } = await supabase
-    .from('tasa_bcv')
-    .insert([{ monto_ves: nuevaTasa, fecha: new Date() }]);
-
-  if (error) {
-    alert("Error al actualizar la tasa: " + error.message);
-  } else {
-    tasaActual = nuevaTasa;
-    alert("¡Tasa BCV actualizada con éxito!");
-    calcularBolivares();
-    cargarVentasDia();
-  }
-}
+// Actualizar tasa automáticamento cada 10 minutos
+setInterval(cargarTasaBcvEnLinea, 600000);
 
 // 2. CARGAR SELECTS
 async function cargarSelects() {
@@ -99,7 +94,9 @@ function autocompletarPrecioServicio(e) {
 
 // 3. CALCULAR BOLÍVARES AUTOMÁTICAMENTE
 function calcularBolivares() {
-  const montoEur = parseFloat(document.getElementById('montoEur').value) || 0;
+  const montoEurInput = document.getElementById('montoEur');
+  if (!montoEurInput) return;
+  const montoEur = parseFloat(montoEurInput.value) || 0;
   const montoBs = montoEur * tasaActual;
   const montoInput = document.getElementById('montoBvInput');
   if (montoInput) {
@@ -148,7 +145,7 @@ async function registrarVenta(e) {
   }
 }
 
-// 5. CARGAR VENTAS DEL DÍA Y CALCULAR CIERRES
+// 5. CARGAR VENTAS DEL DÍA Y HACER TARJETAS TÁCTILES
 async function cargarVentasDia() {
   const hoy = new Date();
   const fechaHoyStr = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0') + 'T00:00:00';
@@ -162,6 +159,8 @@ async function cargarVentasDia() {
     `)
     .gte('fecha', fechaHoyStr)
     .order('fecha', { ascending: false });
+
+  ventasHoyCache = ventas || [];
 
   const tbody = document.getElementById('tablaVentasBody');
   if (!tbody) return;
@@ -199,7 +198,7 @@ async function cargarVentasDia() {
 
     tbody.innerHTML += `
       <tr class="hover:bg-slate-50 transition border-b border-slate-100">
-        <td class="p-3 font-semibold text-slate-800">${v.nombre_clienta}</td>
+        <td class="p-3 font-semibold text-slate-800 capitalize">${v.nombre_clienta}</td>
         <td class="p-3">${v.servicios ? v.servicios.nombre : 'N/A'}</td>
         <td class="p-3 font-medium text-slate-600">${espNombre}</td>
         <td class="p-3 font-bold text-slate-900">€${parseFloat(v.monto_eur).toFixed(2)} <span class="text-[10px] text-slate-400 block">${parseFloat(v.monto_ves).toLocaleString('es-VE', {minimumFractionDigits:2})} Bs</span></td>
@@ -213,20 +212,78 @@ async function cargarVentasDia() {
   document.getElementById('totalDiaBs').textContent = `${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs`;
   document.getElementById('totalServiciosCount').textContent = ventas.length;
 
+  // Renderizar Tarjetas Táctiles/Clicables
   const comContainer = document.getElementById('comisionesContainer');
   comContainer.innerHTML = '';
   for (const [esp, info] of Object.entries(comisionesPorEsp)) {
     comContainer.innerHTML += `
-      <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+      <div 
+        onclick="window.verDetalleEspecialista('${esp}')" 
+        class="p-3.5 bg-slate-50 hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-300 rounded-xl cursor-pointer transition active:scale-98 shadow-2xs"
+      >
         <div class="flex justify-between items-center font-bold text-slate-800 mb-1">
-          <span>${esp}</span>
-          <span class="text-emerald-600">Comisión (${info.porcentaje}%): €${info.comision.toFixed(2)}</span>
+          <span class="flex items-center gap-1.5 capitalize">👩‍🎨 ${esp} <span class="text-[10px] text-slate-400 font-normal">(Toca para ver)</span></span>
+          <span class="text-emerald-600 font-extrabold">Comisión (${info.porcentaje}%): €${info.comision.toFixed(2)}</span>
         </div>
         <p class="text-[11px] text-slate-500">Total servicios recaudados: €${info.totalVentas.toFixed(2)}</p>
       </div>
     `;
   }
 }
+
+// 6. MOSTRAR TABLA DE DESGLOSE POR ESPECIALISTA EN MODAL TÁCTIL
+window.verDetalleEspecialista = function(nombreEspecialista) {
+  const serviciosEsp = ventasHoyCache.filter(v => {
+    const espNom = v.especialistas ? v.especialistas.nombre : 'General';
+    return espNom.toLowerCase() === nombreEspecialista.toLowerCase();
+  });
+
+  const tbody = document.getElementById('tablaDetalleEspecialistaBody');
+  const modalNombre = document.getElementById('modalDetalleNombre');
+  const modalSubtitulo = document.getElementById('modalDetalleSubtitulo');
+  const modalRecaudado = document.getElementById('modalTotalRecaudado');
+  const modalComision = document.getElementById('modalTotalComision');
+
+  if (!tbody) return;
+
+  modalNombre.textContent = `Detalle: ${nombreEspecialista}`;
+
+  if (serviciosEsp.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">No hay registros para esta especialista hoy.</td></tr>`;
+    modalRecaudado.textContent = '0.00 €';
+    modalComision.textContent = '0.00 €';
+  } else {
+    let totalRecaudado = 0;
+    let totalComision = 0;
+    let pctComision = serviciosEsp[0].especialistas ? parseFloat(serviciosEsp[0].especialistas.porcentaje_comision) : 40;
+
+    modalSubtitulo.textContent = `${serviciosEsp.length} servicio(s) realizado(s) hoy (Comisión: ${pctComision}%)`;
+
+    tbody.innerHTML = '';
+    serviciosEsp.forEach(s => {
+      const monto = parseFloat(s.monto_eur);
+      const comisionUnit = monto * (pctComision / 100);
+
+      totalRecaudado += monto;
+      totalComision += comisionUnit;
+
+      tbody.innerHTML += `
+        <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+          <td class="p-3 font-semibold text-slate-800 capitalize">${s.nombre_clienta}</td>
+          <td class="p-3 font-medium">${s.servicios ? s.servicios.nombre : 'Servicio'}</td>
+          <td class="p-3">${s.metodo_pago} <span class="text-[10px] text-slate-400 block">${s.referencia_pago || 'Sin Ref.'}</span></td>
+          <td class="p-3 text-right font-bold text-slate-800">€${monto.toFixed(2)}</td>
+          <td class="p-3 text-right font-extrabold text-emerald-600 bg-emerald-50/30">€${comisionUnit.toFixed(2)}</td>
+        </tr>
+      `;
+    });
+
+    modalRecaudado.textContent = `€${totalRecaudado.toFixed(2)}`;
+    modalComision.textContent = `€${totalComision.toFixed(2)}`;
+  }
+
+  window.openModal('modalDetalleEspecialista');
+};
 
 // GESTIÓN DE MODALES (EXPOSICIÓN GLOBAL)
 window.openModal = function(modalId) {
@@ -577,62 +634,27 @@ window.eliminarEspecialista = async function(idEspecialista) {
     cargarSelects();
   }
 };
-// Obtener Tasa Euro BCV en tiempo real con respaldo
-async function cargarTasaBcvEnLinea() {
-  const elMonto = document.getElementById('tasa-euro-monto');
-  if (!elMonto) return;
 
-  try {
-    // 1. Intentar consulta principal mediante PyDolarVenezuela
-    let res = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar?page=bcv');
-    let data = await res.json();
-    let euroValor = data.monedas?.eur?.price || data.eur?.price;
-
-    // 2. Respaldo directo a CriptoYa en caso de no obtener valor
-    if (!euroValor) {
-      res = await fetch('https://criptoya.com/api/bcv');
-      data = await res.json();
-      euroValor = data.eur;
-    }
-
-    if (euroValor && euroValor > 0) {
-      tasaActual = parseFloat(euroValor);
-      
-      elMonto.textContent = `${tasaActual.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs`;
-
-      // Recalcular montos de ventas si están cargados
-      if (typeof calcularBolivares === 'function') calcularBolivares();
-      if (typeof cargarVentasDia === 'function') cargarVentasDia();
-    } else {
-      elMonto.textContent = 'No disponible';
-    }
-  } catch (err) {
-    console.error('Error al conectar con la tasa del BCV:', err);
-    elMonto.textContent = 'Error de conexión';
-  }
-}
-
-// Inicializar en DOMContentLoaded
-document.addEventListener('DOMContentLoaded', async () => {
-  await cargarTasaBcvEnLinea();
-  // Actualizar automáticamente cada 10 minutos
-  setInterval(cargarTasaBcvEnLinea, 600000);
-});
-// Inicializar la carga automática de la tasa BCV
-document.addEventListener('DOMContentLoaded', async () => {
-  await cargarTasaBcvEnLinea();
-  // Recargar automáticamente cada 10 minutos (600.000 ms)
-  setInterval(cargarTasaBcvEnLinea, 600000);
-});
 // LISTENERS DE TECLADO Y CLIC FUERA DEL MODAL
+const todosLosModales = [
+  'modalDiario', 
+  'modalSemanal', 
+  'modalMensual', 
+  'modalVenta', 
+  'modalAdminOpciones', 
+  'modalServicio', 
+  'modalEspecialista', 
+  'modalDetalleEspecialista'
+];
+
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    ['modalDiario', 'modalSemanal', 'modalMensual', 'modalVenta', 'modalAdminOpciones', 'modalServicio', 'modalEspecialista'].forEach(window.closeModal);
+    todosLosModales.forEach(window.closeModal);
   }
 });
 
 window.addEventListener('click', (e) => {
-  ['modalDiario', 'modalSemanal', 'modalMensual', 'modalVenta', 'modalAdminOpciones', 'modalServicio', 'modalEspecialista'].forEach(id => {
+  todosLosModales.forEach(id => {
     const modal = document.getElementById(id);
     if (e.target === modal) {
       window.closeModal(id);
