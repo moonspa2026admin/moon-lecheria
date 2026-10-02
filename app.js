@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient.js';
 // Variables globales de estado
 let tasaActual = 0;
 let serviciosData = [];
+let especialistasData = [];
 let ventasHoyCache = [];
 
 // INICIALIZACIÓN
@@ -21,40 +22,48 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('formVenta')?.addEventListener('submit', registrarVenta);
 });
 
-// 1. OBTENER TASA EURO BCV EN TIEMPO REAL
+// 1. OBTENER TASA BCV
 async function cargarTasaBcvEnLinea() {
   const elMonto = document.getElementById('tasa-euro-monto');
+  if (elMonto) elMonto.textContent = 'Cargando...';
 
-  try {
-    // 1. Consulta principal a API PyDolarVenezuela
-    let res = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar?page=bcv');
-    let data = await res.json();
-    let euroValor = data.monedas?.eur?.price || data.eur?.price;
-
-    // 2. Respaldo directo a CriptoYa
-    if (!euroValor) {
-      res = await fetch('https://criptoya.com/api/bcv');
-      data = await res.json();
-      euroValor = data.eur;
+  const apis = [
+    async () => {
+      const r = await fetch('https://pydolarve.org/api/v1/dollar?page=bcv');
+      const d = await r.json();
+      return d.monedas?.eur?.price || d.eur?.price;
+    },
+    async () => {
+      const r = await fetch('https://api.vedolar.com/v1/rates/bcv');
+      const d = await r.json();
+      return d.eur || d.euro;
+    },
+    async () => {
+      const r = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+      const d = await r.json();
+      return d.promedio;
     }
+  ];
 
-    if (euroValor && euroValor > 0) {
-      tasaActual = parseFloat(euroValor);
-      if (elMonto) {
-        elMonto.textContent = `${tasaActual.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs`;
+  for (const getRate of apis) {
+    try {
+      const euroValor = await getRate();
+      if (euroValor && !isNaN(euroValor) && euroValor > 0) {
+        tasaActual = parseFloat(euroValor);
+        window.tasaActual = tasaActual; // Exponer para funciones globales
+        if (elMonto) {
+          elMonto.textContent = `${tasaActual.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs`;
+        }
+        if (typeof calcularBolivares === 'function') calcularBolivares();
+        return;
       }
-      calcularBolivares();
-    } else {
-      if (elMonto) elMonto.textContent = 'No disponible';
+    } catch (e) {
+      console.warn('Fallo intento de API BCV:', e);
     }
-  } catch (err) {
-    console.error('Error al conectar con la tasa del BCV:', err);
-    if (elMonto) elMonto.textContent = 'Error de conexión';
   }
-}
 
-// Actualizar tasa automáticamento cada 10 minutos
-setInterval(cargarTasaBcvEnLinea, 600000);
+  if (elMonto) elMonto.textContent = 'No disponible';
+}
 
 // 2. CARGAR SELECTS
 async function cargarSelects() {
@@ -73,6 +82,8 @@ async function cargarSelects() {
 
   const { data: esps, error: errEsp } = await supabase.from('especialistas').select('*').eq('activo', true);
   if (!errEsp && esps) {
+    especialistasData = esps;
+    window.especialistas = esps; // Guardar globalmente para cierres
     const selectEsp = document.getElementById('selectEspecialista');
     if (selectEsp) {
       selectEsp.innerHTML = '<option value="">Selecciona especialista...</option>';
@@ -145,7 +156,7 @@ async function registrarVenta(e) {
   }
 }
 
-// 5. CARGAR VENTAS DEL DÍA Y HACER TARJETAS TÁCTILES
+// 5. CARGAR VENTAS DEL DÍA Y DIBUJAR TARJETAS
 async function cargarVentasDia() {
   const hoy = new Date();
   const fechaHoyStr = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0') + 'T00:00:00';
@@ -161,6 +172,7 @@ async function cargarVentasDia() {
     .order('fecha', { ascending: false });
 
   ventasHoyCache = ventas || [];
+  window.ventas = ventasHoyCache; // Exponer globalmente para los modales de Cierre
 
   const tbody = document.getElementById('tablaVentasBody');
   if (!tbody) return;
@@ -180,8 +192,8 @@ async function cargarVentasDia() {
 
   tbody.innerHTML = '';
   ventas.forEach(v => {
-    totalEur += parseFloat(v.monto_eur);
-    totalBs += parseFloat(v.monto_ves);
+    totalEur += parseFloat(v.monto_eur || 0);
+    totalBs += parseFloat(v.monto_ves || 0);
 
     const espNombre = v.especialistas ? v.especialistas.nombre : 'General';
     const porcentaje = v.especialistas ? parseFloat(v.especialistas.porcentaje_comision) : 40;
@@ -189,8 +201,8 @@ async function cargarVentasDia() {
     if (!comisionesPorEsp[espNombre]) {
       comisionesPorEsp[espNombre] = { totalVentas: 0, comision: 0, porcentaje };
     }
-    comisionesPorEsp[espNombre].totalVentas += parseFloat(v.monto_eur);
-    comisionesPorEsp[espNombre].comision += parseFloat(v.monto_eur) * (porcentaje / 100);
+    comisionesPorEsp[espNombre].totalVentas += parseFloat(v.monto_eur || 0);
+    comisionesPorEsp[espNombre].comision += parseFloat(v.monto_eur || 0) * (porcentaje / 100);
 
     const badgeEstado = v.estado_pago === 'Pagado' 
       ? '<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-medium">Pagado</span>'
@@ -201,7 +213,7 @@ async function cargarVentasDia() {
         <td class="p-3 font-semibold text-slate-800 capitalize">${v.nombre_clienta}</td>
         <td class="p-3">${v.servicios ? v.servicios.nombre : 'N/A'}</td>
         <td class="p-3 font-medium text-slate-600">${espNombre}</td>
-        <td class="p-3 font-bold text-slate-900">€${parseFloat(v.monto_eur).toFixed(2)} <span class="text-[10px] text-slate-400 block">${parseFloat(v.monto_ves).toLocaleString('es-VE', {minimumFractionDigits:2})} Bs</span></td>
+        <td class="p-3 font-bold text-slate-900">€${parseFloat(v.monto_eur || 0).toFixed(2)} <span class="text-[10px] text-slate-400 block">${parseFloat(v.monto_ves || 0).toLocaleString('es-VE', {minimumFractionDigits:2})} Bs</span></td>
         <td class="p-3">${v.metodo_pago} <span class="text-[10px] text-slate-400 block">${v.referencia_pago || ''}</span></td>
         <td class="p-3">${badgeEstado}</td>
       </tr>
@@ -214,24 +226,26 @@ async function cargarVentasDia() {
 
   // Renderizar Tarjetas Táctiles/Clicables
   const comContainer = document.getElementById('comisionesContainer');
-  comContainer.innerHTML = '';
-  for (const [esp, info] of Object.entries(comisionesPorEsp)) {
-    comContainer.innerHTML += `
-      <div 
-        onclick="window.verDetalleEspecialista('${esp}')" 
-        class="p-3.5 bg-slate-50 hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-300 rounded-xl cursor-pointer transition active:scale-98 shadow-2xs"
-      >
-        <div class="flex justify-between items-center font-bold text-slate-800 mb-1">
-          <span class="flex items-center gap-1.5 capitalize">👩‍🎨 ${esp} <span class="text-[10px] text-slate-400 font-normal">(Toca para ver)</span></span>
-          <span class="text-emerald-600 font-extrabold">Comisión (${info.porcentaje}%): €${info.comision.toFixed(2)}</span>
+  if (comContainer) {
+    comContainer.innerHTML = '';
+    for (const [esp, info] of Object.entries(comisionesPorEsp)) {
+      comContainer.innerHTML += `
+        <div 
+          onclick="window.verDetalleEspecialista('${esp}')" 
+          class="p-3.5 bg-slate-50 hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-300 rounded-xl cursor-pointer transition active:scale-98 shadow-2xs"
+        >
+          <div class="flex justify-between items-center font-bold text-slate-800 mb-1">
+            <span class="flex items-center gap-1.5 capitalize">👩‍🎨 ${esp} <span class="text-[10px] text-slate-400 font-normal">(Toca para ver)</span></span>
+            <span class="text-emerald-600 font-extrabold">Comisión (${info.porcentaje}%): €${info.comision.toFixed(2)}</span>
+          </div>
+          <p class="text-[11px] text-slate-500">Total servicios recaudados: €${info.totalVentas.toFixed(2)}</p>
         </div>
-        <p class="text-[11px] text-slate-500">Total servicios recaudados: €${info.totalVentas.toFixed(2)}</p>
-      </div>
-    `;
+      `;
+    }
   }
 }
 
-// 6. MOSTRAR TABLA DE DESGLOSE POR ESPECIALISTA EN MODAL TÁCTIL
+// 6. DETALLE POR ESPECIALISTA
 window.verDetalleEspecialista = function(nombreEspecialista) {
   const serviciosEsp = ventasHoyCache.filter(v => {
     const espNom = v.especialistas ? v.especialistas.nombre : 'General';
@@ -261,7 +275,7 @@ window.verDetalleEspecialista = function(nombreEspecialista) {
 
     tbody.innerHTML = '';
     serviciosEsp.forEach(s => {
-      const monto = parseFloat(s.monto_eur);
+      const monto = parseFloat(s.monto_eur || 0);
       const comisionUnit = monto * (pctComision / 100);
 
       totalRecaudado += monto;
@@ -285,10 +299,134 @@ window.verDetalleEspecialista = function(nombreEspecialista) {
   window.openModal('modalDetalleEspecialista');
 };
 
-// GESTIÓN DE MODALES (EXPOSICIÓN GLOBAL)
+// 7. RENDER DE CIERRES (DIARIO Y SEMANAL)
+window.renderCierreDiario = function() {
+  const tbody = document.getElementById('tablaServiciosDiarios');
+  const listaComisiones = document.getElementById('listaComisiones');
+  const elFechaDiario = document.getElementById('fechaDiario');
+  
+  if (!tbody) return;
+
+  const hoyLocal = new Date();
+  const hoyIsoStr = hoyLocal.getFullYear() + '-' + String(hoyLocal.getMonth() + 1).padStart(2, '0') + '-' + String(hoyLocal.getDate()).padStart(2, '0');
+
+  if (elFechaDiario) {
+    elFechaDiario.textContent = `Resumen al ${hoyLocal.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+  }
+
+  const ventasHoy = (window.ventas || []).filter(v => {
+    const fv = v.fecha ? v.fecha.split('T')[0] : hoyIsoStr;
+    return fv === hoyIsoStr;
+  });
+
+  if (ventasHoy.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">No se han registrado ventas hoy.</td></tr>`;
+    if (listaComisiones) listaComisiones.innerHTML = '<li class="text-slate-400">• Sin comisiones ni propinas hoy</li>';
+    return;
+  }
+
+  tbody.innerHTML = ventasHoy.map((v, index) => {
+    const propina = parseFloat(v.propina_eur) || 0;
+    const servicioNombre = v.servicios ? v.servicios.nombre : '-';
+    const espNombre = v.especialistas ? v.especialistas.nombre : 'Sin Asignar';
+    const montoEur = parseFloat(v.monto_eur) || 0;
+    const montoBs = parseFloat(v.monto_ves) || 0;
+
+    return `
+      <tr class="border-b hover:bg-slate-50 text-xs">
+        <td class="p-2 font-semibold text-slate-500">${index + 1}</td>
+        <td class="p-2 font-medium capitalize">${v.nombre_clienta || 'S/N'}</td>
+        <td class="p-2">${servicioNombre}</td>
+        <td class="p-2 font-semibold">${espNombre}</td>
+        <td class="p-2 font-semibold">${montoEur.toFixed(2)} € ${propina > 0 ? `<span class="text-emerald-600 text-[10px] block">(+${propina.toFixed(2)}€ propina)</span>` : ''}</td>
+        <td class="p-2 text-xs">${v.metodo_pago || '-'} ${montoBs ? `(${montoBs.toLocaleString('es-VE', {minimumFractionDigits:2})} Bs)` : ''}</td>
+        <td class="p-2 text-xs text-slate-500">${v.referencia_pago || '-'}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const acumuladoProf = {};
+
+  ventasHoy.forEach(v => {
+    const monto = parseFloat(v.monto_eur) || 0;
+    const propina = parseFloat(v.propina_eur) || 0;
+    const prof = v.especialistas ? v.especialistas.nombre : 'Sin Asignar';
+    const pct = v.especialistas ? parseFloat(v.especialistas.porcentaje_comision) : 50;
+
+    if (!acumuladoProf[prof]) {
+      acumuladoProf[prof] = { totalServicios: 0, propinas: 0, pct: pct };
+    }
+    acumuladoProf[prof].totalServicios += monto;
+    acumuladoProf[prof].propinas += propina;
+  });
+
+  if (listaComisiones) {
+    let htmlComisiones = '';
+
+    Object.keys(acumuladoProf).forEach(p => {
+      const item = acumuladoProf[p];
+      const pagoComision = (item.totalServicios * item.pct) / 100;
+      const totalAPagar = pagoComision + item.propinas;
+
+      htmlComisiones += `
+        <li class="mb-1">• <strong>${p}:</strong> 
+          ${item.totalServicios.toFixed(2)} € (${item.pct}%) = ${pagoComision.toFixed(2)} € 
+          ${item.propinas > 0 ? `<span class="text-amber-600 font-semibold">+ ${item.propinas.toFixed(2)} € propina</span>` : ''}
+          ➡ <span class="font-extrabold text-emerald-600">Total: ${totalAPagar.toFixed(2)} €</span>
+        </li>`;
+    });
+
+    listaComisiones.innerHTML = htmlComisiones;
+  }
+};
+
+window.renderCierreSemanal = function() {
+  const tbody = document.getElementById('tablaNominaSemanal');
+  if (!tbody) return;
+
+  const ventas = window.ventas || [];
+  const especialistas = window.especialistas || [];
+
+  if (especialistas.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400">No hay especialistas registradas.</td></tr>`;
+    return;
+  }
+
+  let htmlTabla = '';
+
+  especialistas.forEach(esp => {
+    const ventasEsp = ventas.filter(v => (v.especialistas ? v.especialistas.nombre : '') === esp.nombre);
+    
+    const totalVendidoEur = ventasEsp.reduce((acc, v) => acc + (parseFloat(v.monto_eur) || 0), 0);
+    const totalPropinasEur = ventasEsp.reduce((acc, v) => acc + (parseFloat(v.propina_eur) || 0), 0);
+    
+    const pctComision = parseFloat(esp.porcentaje_comision) || 50;
+    const totalComisionEur = (totalVendidoEur * pctComision) / 100;
+    const totalCobroEsp = totalComisionEur + totalPropinasEur;
+    const totalBs = totalCobroEsp * (tasaActual || 1);
+
+    htmlTabla += `
+      <tr class="border-b text-xs">
+        <td class="p-2 border font-bold text-left capitalize">${esp.nombre}</td>
+        <td class="p-2 border" colspan="4">${ventasEsp.length} servicio(s)</td>
+        <td class="p-2 border text-amber-600 font-medium">+${totalPropinasEur.toFixed(2)} € propina</td>
+        <td class="p-2 border font-bold bg-amber-50">${totalCobroEsp.toFixed(2)} €</td>
+        <td class="p-2 border font-semibold bg-blue-50">${totalBs.toLocaleString('es-VE', {minimumFractionDigits: 2})} Bs</td>
+      </tr>
+    `;
+  });
+
+  tbody.innerHTML = htmlTabla;
+};
+
+// 8. GESTIÓN DE MODALES
 window.openModal = function(modalId) {
   const modal = document.getElementById(modalId);
-  if (modal) modal.classList.remove('hidden');
+  if (modal) {
+    modal.classList.remove('hidden');
+    if (modalId === 'modalDiario') window.renderCierreDiario();
+    if (modalId === 'modalSemanal') window.renderCierreSemanal();
+  }
 };
 
 window.closeModal = function(modalId) {
@@ -336,7 +474,7 @@ window.cerrarModalEspecialista = function() {
   window.closeModal('modalEspecialista');
 };
 
-// ADMINISTRACIÓN DE SERVICIOS Y ESPECIALISTAS
+// 9. ADMINISTRACIÓN DE SERVICIOS Y ESPECIALISTAS
 window.guardarServicio = async function(event) {
   if (event) event.preventDefault();
 
@@ -635,7 +773,7 @@ window.eliminarEspecialista = async function(idEspecialista) {
   }
 };
 
-// LISTENERS DE TECLADO Y CLIC FUERA DEL MODAL
+// 10. LISTENERS TECLADO Y CLIC FUERA
 const todosLosModales = [
   'modalDiario', 
   'modalSemanal', 

@@ -1,4 +1,4 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -38,33 +38,40 @@
   <!-- CONTENEDOR PRINCIPAL -->
   <main class="max-w-7xl mx-auto px-6 py-6">
     
-    <!-- BARRA DE ACCESOS -->
+    <!-- BARRA DE ACCESOS (Botones Pastel) -->
     <div class="mb-6">
       <div class="bg-white p-3.5 rounded-2xl border border-rose-100/60 shadow-2xs flex flex-wrap gap-3 items-center justify-between">
+        
+        <!-- Botón Verde Claro Pastel -->
         <button onclick="window.abrirModalVenta()" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-xs px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 shadow-2xs border border-emerald-200">
           <span>➕</span> Registrar Nuevo Servicio / Venta
         </button>
 
+        <!-- Botón Rosa Claro Pastel -->
         <button onclick="window.verificarAccesoAdmin()" class="bg-rose-100 hover:bg-rose-200 text-rose-900 text-xs px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 border border-rose-200 shadow-2xs">
           <span>🔐</span> Módulo Administrativo (Clave)
         </button>
+
       </div>
     </div>
 
-    <!-- BOTONES DE ACCIÓN PARA CIERRES -->
+    <!-- BOTONES DE ACCIÓN PARA CIERRES (Tonos Pastel Variados) -->
     <div class="flex flex-wrap gap-3 my-4">
+      <!-- Amarillo Suave -->
       <button onclick="window.openModal('modalDiario')" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-200 px-4 py-2 rounded-xl text-xs font-bold transition shadow-2xs">
         📋 Cierre Diario
       </button>
+      <!-- Azul/Cielo Pastel -->
       <button onclick="window.openModal('modalSemanal')" class="bg-sky-100 hover:bg-sky-200 text-sky-900 border border-sky-200 px-4 py-2 rounded-xl text-xs font-bold transition shadow-2xs">
         📅 Resumen Semanal
       </button>
+      <!-- Lila/Rosa Suave -->
       <button onclick="window.openModal('modalMensual')" class="bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-200 px-4 py-2 rounded-xl text-xs font-bold transition shadow-2xs">
         📊 Dashboard Mensual
       </button>
     </div>
 
-    <!-- MÉTRICAS Y TABLA -->
+    <!-- SECCIÓN PRINCIPAL DE MÉTRICAS Y TABLA -->
     <div class="space-y-6">
       
       <!-- Resumen Cards del Día -->
@@ -113,7 +120,7 @@
 
       <!-- Desglose de Comisiones del Día -->
       <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-        <h3 class="font-bold text-slate-800 text-sm mb-3">💼 Desglose de Comisiones por Especialista (Hoy)</h3>
+        <h3 class="font-bold text-slate-800 text-sm mb-3">💼 Desglose de Comisiones y Propinas por Especialista (Hoy)</h3>
         <div id="comisionesContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
           <p class="text-slate-400">Calculando comisiones...</p>
         </div>
@@ -123,55 +130,6 @@
   </main>
 
   <!-- MODALES FLOTANTES -->
-
-  <!-- Modal Táctil: Detalle Especialista (NUEVO / AGREGADO) -->
-  <div id="modalDetalleEspecialista" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 overflow-y-auto">
-    <div class="bg-white rounded-2xl p-6 w-full max-w-xl shadow-2xl border border-slate-100 my-auto">
-      <div class="flex justify-between items-center mb-4 border-b pb-3">
-        <div>
-          <h3 id="modalDetalleNombre" class="text-base font-bold text-slate-900">Detalle Especialista</h3>
-          <p id="modalDetalleSubtitulo" class="text-xs text-slate-500">Servicios realizados hoy</p>
-        </div>
-        <button onclick="window.closeModal('modalDetalleEspecialista')" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
-      </div>
-
-      <div class="overflow-x-auto max-h-60 mb-4 border rounded-xl">
-        <table class="w-full text-left border-collapse text-xs">
-          <thead class="bg-slate-100 text-slate-600 border-b">
-            <tr>
-              <th class="p-2.5">Clienta</th>
-              <th class="p-2.5">Servicio</th>
-              <th class="p-2.5">Pago</th>
-              <th class="p-2.5 text-right">Monto</th>
-              <th class="p-2.5 text-right">Comisión</th>
-            </tr>
-          </thead>
-          <tbody id="tablaDetalleEspecialistaBody" class="divide-y divide-slate-100">
-            <tr>
-              <td colspan="5" class="p-4 text-center text-slate-400">Cargando detalle...</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs">
-        <div>
-          <span class="text-slate-500 block">Total Recaudado:</span>
-          <span id="modalTotalRecaudado" class="font-bold text-slate-800 text-sm">0.00 €</span>
-        </div>
-        <div class="text-right">
-          <span class="text-slate-500 block">Comisión Total:</span>
-          <span id="modalTotalComision" class="font-extrabold text-emerald-600 text-sm">0.00 €</span>
-        </div>
-      </div>
-
-      <div class="mt-4 flex justify-end">
-        <button onclick="window.closeModal('modalDetalleEspecialista')" class="px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl hover:bg-slate-800 transition">
-          Cerrar
-        </button>
-      </div>
-    </div>
-  </div>
 
   <!-- Modal: Registrar Venta / Servicio -->
   <div id="modalVenta" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 overflow-y-auto">
@@ -390,34 +348,26 @@
             </tr>
           </thead>
           <tbody id="tablaServiciosDiarios">
-            <tr class="border-b hover:bg-slate-50">
-              <td class="p-2 font-semibold text-slate-500">53</td>
-              <td class="p-2 font-medium">Desiree Salazar</td>
-              <td class="p-2">Manos y Pies Tradicionales</td>
-              <td class="p-2">Jhossy</td>
-              <td class="p-2 font-semibold">30.00 €</td>
-              <td class="p-2 text-xs">P.M: 336.30 Bs</td>
-              <td class="p-2 text-xs text-slate-500">9572</td>
-            </tr>
+            <!-- Cargado dinámicamente desde JS -->
           </tbody>
         </table>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border">
         <div>
-          <h4 class="font-bold text-sm text-slate-700 mb-2 border-b pb-1">Comisiones por Profesional</h4>
+          <h4 class="font-bold text-sm text-slate-700 mb-2 border-b pb-1">Comisiones y Propinas por Profesional</h4>
           <ul class="text-xs space-y-1 text-slate-600" id="listaComisiones">
-            <li>• <strong>Jhossy:</strong> 85.00 € (40%) = <span class="font-bold text-emerald-600">34.00 €</span></li>
+            <!-- Cargado dinámicamente desde JS -->
           </ul>
         </div>
         <div class="flex flex-col justify-between border-t md:border-t-0 md:border-l pt-3 md:pt-0 md:pl-4">
           <div>
             <span class="text-xs text-slate-500 block">Total Recaudado el Día:</span>
-            <span class="text-lg font-extrabold text-slate-800">157.00 €</span>
+            <span class="text-lg font-extrabold text-slate-800" id="totalRecaudadoDiarioModal">0.00 €</span>
           </div>
           <div class="mt-2">
             <span class="text-xs text-slate-500 block">Cierre de Caja (Restando Nómina/Comisiones):</span>
-            <span class="text-xl font-black text-indigo-600">125.50 €</span>
+            <span class="text-xl font-black text-indigo-600" id="cierreCajaDiarioModal">0.00 €</span>
           </div>
         </div>
       </div>
@@ -438,32 +388,20 @@
         <button onclick="window.closeModal('modalSemanal')" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
       </div>
 
-      <h4 class="font-bold text-sm text-slate-700 mb-2">Comisiones Semanales por Personal (€)</h4>
+      <h4 class="font-bold text-sm text-slate-700 mb-2">Comisiones y Propinas Semanales por Personal (€)</h4>
       <div class="overflow-x-auto mb-6">
         <table class="w-full text-xs text-center border-collapse">
           <thead class="bg-slate-100 text-slate-700">
             <tr>
               <th class="p-2 border text-left">Especialista</th>
-              <th class="p-2 border">Sáb</th>
-              <th class="p-2 border">Mar</th>
-              <th class="p-2 border">Mié</th>
-              <th class="p-2 border">Jue</th>
-              <th class="p-2 border">Vie</th>
-              <th class="p-2 border font-bold bg-amber-100">Total (€)</th>
+              <th class="p-2 border" colspan="4">Servicios</th>
+              <th class="p-2 border font-medium text-amber-700 bg-amber-50">Propinas (€)</th>
+              <th class="p-2 border font-bold bg-amber-100">Total a Cobrar (€)</th>
               <th class="p-2 border font-bold bg-blue-100">Total (Bs)</th>
             </tr>
           </thead>
           <tbody id="tablaNominaSemanal">
-            <tr class="border-b">
-              <td class="p-2 border font-bold text-left">Jhossy</td>
-              <td class="p-2 border">11.60</td>
-              <td class="p-2 border">18.80</td>
-              <td class="p-2 border">32.00</td>
-              <td class="p-2 border">46.80</td>
-              <td class="p-2 border">34.00</td>
-              <td class="p-2 border font-bold bg-amber-50">143.20 €</td>
-              <td class="p-2 border font-semibold bg-blue-50">115.132,80 Bs</td>
-            </tr>
+            <!-- Cargado dinámicamente desde JS -->
           </tbody>
         </table>
       </div>
@@ -530,6 +468,65 @@
           <div class="text-2xl font-black text-indigo-900 mt-1" id="kpiNeto">1.370,00 €</div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal: Detalle de Servicios por Especialista -->
+  <div id="modalDetalleEspecialista" class="fixed inset-0 bg-black/50 backdrop-blur-xs hidden flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl w-full max-w-2xl shadow-2xl border border-slate-100 my-auto overflow-hidden">
+      
+      <!-- Cabecera del Modal -->
+      <div class="px-6 py-4 bg-emerald-50/60 border-b border-emerald-100 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">👩‍🎨</span>
+          <div>
+            <h3 id="modalDetalleNombre" class="font-bold text-slate-800 text-base">Detalle de Especialista</h3>
+            <p id="modalDetalleSubtitulo" class="text-xs text-emerald-700 font-medium">Resumen de servicios del día</p>
+          </div>
+        </div>
+        <button onclick="window.closeModal('modalDetalleEspecialista')" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+      </div>
+
+      <!-- Contenido / Tabla -->
+      <div class="p-5 max-h-[70vh] overflow-y-auto space-y-4">
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+                <th class="p-3">Clienta</th>
+                <th class="p-3">Servicio</th>
+                <th class="p-3">Pago / Ref</th>
+                <th class="p-3 text-right">Monto (€)</th>
+                <th class="p-3 text-right bg-amber-50/50 text-amber-800">Propina (€)</th>
+                <th class="p-3 text-right bg-emerald-50/50 text-emerald-800">Comisión (€)</th>
+              </tr>
+            </thead>
+            <tbody id="tablaDetalleEspecialistaBody" class="divide-y divide-slate-100 text-slate-700">
+              <!-- Se llena dinámicamente -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Resumen Consolidado -->
+        <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs">
+          <div>
+            <span class="text-slate-400 block font-medium">Total Servicios Recaudados</span>
+            <span id="modalTotalRecaudado" class="text-sm font-black text-slate-800">0.00 €</span>
+          </div>
+          <div class="text-right">
+            <span class="text-emerald-600 block font-medium">Total a Cobrar (Comisión + Propinas)</span>
+            <span id="modalTotalComision" class="text-sm font-black text-emerald-700">0.00 €</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pie del Modal -->
+      <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-end">
+        <button onclick="window.closeModal('modalDetalleEspecialista')" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition">
+          Cerrar
+        </button>
+      </div>
+
     </div>
   </div>
 
