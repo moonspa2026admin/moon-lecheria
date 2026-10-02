@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('formVenta')?.addEventListener('submit', registrarVenta);
 });
 
-// 1. OBTENER TASA BCV
+// 1. TASA OFICIAL EURO BCV (FILTRADO EXCLUSIVO DE EURO)
 async function cargarTasaBcvEnLinea() {
   const elMonto = document.getElementById('tasa-euro-monto');
   if (elMonto) elMonto.textContent = 'Cargando...';
@@ -34,14 +34,14 @@ async function cargarTasaBcvEnLinea() {
       return d.monedas?.eur?.price || d.eur?.price;
     },
     async () => {
+      const r = await fetch('https://ve.dolarapi.com/v1/euros/oficial');
+      const d = await r.json();
+      return d.promedio;
+    },
+    async () => {
       const r = await fetch('https://api.vedolar.com/v1/rates/bcv');
       const d = await r.json();
       return d.eur || d.euro;
-    },
-    async () => {
-      const r = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
-      const d = await r.json();
-      return d.promedio;
     }
   ];
 
@@ -50,7 +50,7 @@ async function cargarTasaBcvEnLinea() {
       const euroValor = await getRate();
       if (euroValor && !isNaN(euroValor) && euroValor > 0) {
         tasaActual = parseFloat(euroValor);
-        window.tasaActual = tasaActual; // Exponer para funciones globales
+        window.tasaActual = tasaActual;
         if (elMonto) {
           elMonto.textContent = `${tasaActual.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs`;
         }
@@ -58,12 +58,211 @@ async function cargarTasaBcvEnLinea() {
         return;
       }
     } catch (e) {
-      console.warn('Fallo intento de API BCV:', e);
+      console.warn('Fallo intento de API Euro BCV:', e);
     }
   }
 
   if (elMonto) elMonto.textContent = 'No disponible';
 }
+
+// GESTIÓN DE MODAL DE GASTOS
+window.abrirModalGasto = function() { window.openModal('modalGasto'); };
+window.cerrarModalGasto = function() { window.closeModal('modalGasto'); };
+
+window.registrarGasto = async function(e) {
+  e.preventDefault();
+  
+  const concepto = document.getElementById('conceptoGasto').value;
+  const categoria = document.getElementById('categoriaGasto').value;
+  const montoEur = parseFloat(document.getElementById('montoGastoEur').value);
+  const metodoPago = document.getElementById('metodoPagoGasto').value;
+  const montoVes = montoEur * (tasaActual || 0);
+
+  const { error } = await supabase.from('gastos_operativos').insert([{
+    concepto,
+    categoria,
+    monto_eur: montoEur,
+    monto_ves: montoVes,
+    metodo_pago: metodoPago,
+    tasa_aplicada: tasaActual,
+    fecha: new Date().toISOString()
+  }]);
+
+  if (error) {
+    alert("Error al registrar gasto: " + error.message);
+  } else {
+    alert("¡Gasto registrado con éxito!");
+    document.getElementById('formGasto').reset();
+    window.cerrarModalGasto();
+  }
+};
+
+// 7. CIERRE SEMANAL DINÁMICO
+window.renderCierreSemanal = async function() {
+  const tbody = document.getElementById('tablaNominaSemanal');
+  const elIngresosArea = document.getElementById('ingresosPorAreaContainer');
+  const elDistribucionPago = document.getElementById('distribucionPagosContainer');
+  const elBalanceSemanal = document.getElementById('balanceNetoSemanalVal');
+  const elCuentasPendientes = document.getElementById('cuentasPendientesSemanalVal');
+
+  if (!tbody) return;
+
+  // Rango de la semana actual (Lunes a Domingo)
+  const ahora = new Date();
+  const primerDiaSemana = new Date(ahora.setDate(ahora.getDate() - ahora.getDay() + 1));
+  primerDiaSemana.setHours(0,0,0,0);
+
+  const { data: ventasSemana } = await supabase
+    .from('ventas_diarias')
+    .select(`*, servicios(nombre, categoria), especialistas(nombre, porcentaje_comision)`)
+    .gte('fecha', primerDiaSemana.toISOString());
+
+  const { data: gastosSemana } = await supabase
+    .from('gastos_operativos')
+    .select('*')
+    .gte('fecha', primerDiaSemana.toISOString());
+
+  const ventas = ventasSemana || [];
+  const gastos = gastosSemana || [];
+  const especialistas = window.especialistas || [];
+
+  let htmlTabla = '';
+  let totalComisionesYPropinasSemana = 0;
+
+  especialistas.forEach(esp => {
+    const ventasEsp = ventas.filter(v => (v.especialistas ? v.especialistas.nombre : '') === esp.nombre);
+    
+    const totalVendidoEur = ventasEsp.reduce((acc, v) => acc + (parseFloat(v.monto_eur) || 0), 0);
+    const totalPropinasEur = ventasEsp.reduce((acc, v) => acc + (parseFloat(v.propina_eur) || 0), 0);
+    
+    const pctComision = parseFloat(esp.porcentaje_comision) || 40;
+    const totalComisionEur = (totalVendidoEur * pctComision) / 100;
+    const totalCobroEsp = totalComisionEur + totalPropinasEur;
+    const totalBs = totalCobroEsp * (tasaActual || 1);
+
+    totalComisionesYPropinasSemana += totalCobroEsp;
+
+    htmlTabla += `
+      <tr class="border-b text-xs">
+        <td class="p-2 font-bold text-left capitalize">${esp.nombre}</td>
+        <td class="p-2" colspan="2">${ventasEsp.length} servicio(s)</td>
+        <td class="p-2 text-amber-600 font-medium">+${totalPropinasEur.toFixed(2)} €</td>
+        <td class="p-2 font-bold bg-amber-50">€${totalCobroEsp.toFixed(2)}</td>
+        <td class="p-2 font-semibold bg-blue-50">${totalBs.toLocaleString('es-VE', {minimumFractionDigits: 2})} Bs</td>
+      </tr>
+    `;
+  });
+
+  tbody.innerHTML = htmlTabla || `<tr><td colspan="6" class="p-4 text-center text-slate-400">Sin datos esta semana.</td></tr>`;
+
+  // Cálculos dinámicos por área
+  const ingresosPorCategoria = {};
+  let totalVentasSemanaEur = 0;
+  let cuentasPendientes = 0;
+
+  ventas.forEach(v => {
+    const cat = (v.servicios && v.servicios.categoria) ? v.servicios.categoria : 'General';
+    const monto = parseFloat(v.monto_eur) || 0;
+    ingresosPorCategoria[cat] = (ingresosPorCategoria[cat] || 0) + monto;
+    totalVentasSemanaEur += monto;
+
+    if (v.estado_pago === 'Por Cobrar') {
+      cuentasPendientes += monto;
+    }
+  });
+
+  if (elIngresosArea) {
+    elIngresosArea.innerHTML = Object.entries(ingresosPorCategoria).map(([cat, monto]) => `
+      <div class="flex justify-between text-xs font-semibold text-slate-700 py-1">
+        <span>${cat}:</span>
+        <span>€${monto.toFixed(2)}</span>
+      </div>
+    `).join('') || '<p class="text-xs text-slate-400">Sin registros</p>';
+  }
+
+  // Agrupamiento dinámico por método de pago (Incluye PDV)
+  const distribucionPagos = {};
+
+  ventas.forEach(v => {
+    const metodo = v.metodo_pago || 'Otros';
+    const montoEur = parseFloat(v.monto_eur) || 0;
+    const montoBs = parseFloat(v.monto_ves) || 0;
+
+    if (!distribucionPagos[metodo]) {
+      distribucionPagos[metodo] = { eur: 0, bs: 0 };
+    }
+    distribucionPagos[metodo].eur += montoEur;
+    distribucionPagos[metodo].bs += montoBs;
+  });
+
+  // Renderizado dinámico en la tarjeta de distribución de pagos
+  if (elDistribucionPago) {
+    elDistribucionPago.innerHTML = Object.entries(distribucionPagos).map(([metodo, totales]) => {
+      // Si el pago fue en moneda local (Bs) o Punto de Venta, mostramos equivalencia en Bs
+      const esMonedaNacional = metodo.includes('Pago Móvil') || metodo.includes('Punto de Venta') || metodo.includes('PDV');
+      const valorMostrar = esMonedaNacional 
+        ? `${totales.bs.toLocaleString('es-VE', {minimumFractionDigits: 2})} Bs` 
+        : `€${totales.eur.toFixed(2)}`;
+
+      return `
+        <div class="flex justify-between text-xs font-semibold text-slate-700 py-1 border-b border-slate-100 last:border-b-0">
+          <span>💳 ${metodo}:</span>
+          <span class="font-bold">${valorMostrar}</span>
+        </div>
+      `;
+    }).join('') || '<p class="text-xs text-slate-400">Sin transacciones registradas</p>';
+  }
+
+  const totalGastosSemanaEur = gastos.reduce((acc, g) => acc + (parseFloat(g.monto_eur) || 0), 0);
+  const balanceNeto = totalVentasSemanaEur - totalComisionesYPropinasSemana - totalGastosSemanaEur;
+
+  if (elBalanceSemanal) elBalanceSemanal.textContent = `€${balanceNeto.toFixed(2)}`;
+  if (elCuentasPendientes) elCuentasPendientes.textContent = `Cuentas por Cobrar Pendientes: €${cuentasPendientes.toFixed(2)}`;
+};
+
+// 8. CIERRE MENSUAL DINÁMICO
+window.renderCierreMensual = async function() {
+  const elIngresosTotales = document.getElementById('mensualIngresosTotales');
+  const elNominaComisiones = document.getElementById('mensualNominaComisiones');
+  const elGastosOperativos = document.getElementById('mensualGastosOperativos');
+  const elGananciaNeta = document.getElementById('mensualGananciaNeta');
+
+  const ahora = new Date();
+  const primerDiaMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString();
+
+  const { data: ventasMes } = await supabase
+    .from('ventas_diarias')
+    .select(`*, especialistas(porcentaje_comision)`)
+    .gte('fecha', primerDiaMes);
+
+  const { data: gastosMes } = await supabase
+    .from('gastos_operativos')
+    .select('*')
+    .gte('fecha', primerDiaMes);
+
+  const ventas = ventasMes || [];
+  const gastos = gastosMes || [];
+
+  let ingresosTotales = 0;
+  let nominaComisionesTotales = 0;
+
+  ventas.forEach(v => {
+    const monto = parseFloat(v.monto_eur) || 0;
+    const propina = parseFloat(v.propina_eur) || 0;
+    const pctComision = v.especialistas ? parseFloat(v.especialistas.porcentaje_comision) : 40;
+
+    ingresosTotales += monto;
+    nominaComisionesTotales += ((monto * pctComision) / 100) + propina;
+  });
+
+  const gastosTotales = gastos.reduce((acc, g) => acc + (parseFloat(g.monto_eur) || 0), 0);
+  const gananciaNeta = ingresosTotales - nominaComisionesTotales - gastosTotales;
+
+  if (elIngresosTotales) elIngresosTotales.textContent = `€${ingresosTotales.toFixed(2)}`;
+  if (elNominaComisiones) elNominaComisiones.textContent = `€${nominaComisionesTotales.toFixed(2)}`;
+  if (elGastosOperativos) elGastosOperativos.textContent = `€${gastosTotales.toFixed(2)}`;
+  if (elGananciaNeta) elGananciaNeta.textContent = `€${gananciaNeta.toFixed(2)}`;
+};
 
 // 2. CARGAR SELECTS
 async function cargarSelects() {
@@ -83,7 +282,7 @@ async function cargarSelects() {
   const { data: esps, error: errEsp } = await supabase.from('especialistas').select('*').eq('activo', true);
   if (!errEsp && esps) {
     especialistasData = esps;
-    window.especialistas = esps; // Guardar globalmente para cierres
+    window.especialistas = esps;
     const selectEsp = document.getElementById('selectEspecialista');
     if (selectEsp) {
       selectEsp.innerHTML = '<option value="">Selecciona especialista...</option>';
@@ -172,7 +371,7 @@ async function cargarVentasDia() {
     .order('fecha', { ascending: false });
 
   ventasHoyCache = ventas || [];
-  window.ventas = ventasHoyCache; // Exponer globalmente para los modales de Cierre
+  window.ventas = ventasHoyCache;
 
   const tbody = document.getElementById('tablaVentasBody');
   if (!tbody) return;
@@ -780,6 +979,7 @@ const todosLosModales = [
   'modalSemanal', 
   'modalMensual', 
   'modalVenta', 
+  'modalGasto',
   'modalAdminOpciones', 
   'modalServicio', 
   'modalEspecialista', 
