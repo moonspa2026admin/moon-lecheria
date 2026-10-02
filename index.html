@@ -336,13 +336,18 @@
       document.getElementById('modalVenta').classList.add('hidden');
     }
 
-    function verificarAccesoAdmin() {
+function verificarAccesoAdmin() {
   let clave = prompt("Ingrese la clave administrativa:");
   if (clave === "admin123") {
     document.getElementById('modalAdminOpciones').classList.remove('hidden');
-    // Llama directamente a la carga de datos
-    if (typeof window.cargarListaServiciosAdmin === 'function') window.cargarListaServiciosAdmin();
-    if (typeof window.cargarListaEspecialistasAdmin === 'function') window.cargarListaEspecialistasAdmin();
+    
+    // Ejecutar la lectura de Supabase
+    if (typeof window.cargarListaServiciosAdmin === 'function') {
+      window.cargarListaServiciosAdmin();
+    }
+    if (typeof window.cargarListaEspecialistasAdmin === 'function') {
+      window.cargarListaEspecialistasAdmin();
+    }
   } else if (clave !== null) {
     alert("Clave incorrecta. Acceso denegado.");
   }

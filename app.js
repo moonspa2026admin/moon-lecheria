@@ -386,71 +386,63 @@ window.cerrarModalGestionServicios = cerrarModalGestionServicios;
 window.abrirModalGestionEspecialistas = abrirModalGestionEspecialistas;
 window.cerrarModalGestionEspecialistas = cerrarModalGestionEspecialistas;
 
-// Renderizar servicios agrupados por categorías con edición de precio
+// 1. Cargar Servicios agrupados por categoría y con precio real
 window.cargarListaServiciosAdmin = async function() {
   const container = document.getElementById('listaServiciosAdmin');
   if (!container) return;
 
   const { data: servicios, error } = await supabase
     .from('servicios')
-    .select('*')
-    .order('categoria')
-    .order('nombre');
+    .select('*');
 
   if (error || !servicios || servicios.length === 0) {
-    container.innerHTML = `<p class="p-3 text-slate-400 text-center">No hay servicios registrados.</p>`;
+    container.innerHTML = `<p class="p-3 text-slate-400 text-center text-xs">No hay servicios registrados.</p>`;
     return;
   }
 
-  // Definir las categorías fijas
   const categoriasFijas = ['Uñas', 'Estilismo', 'Extras'];
-
-  // Agrupar los servicios por categoría
   const agrupados = {};
-  
-  // Inicializar grupos conocidos
   categoriasFijas.forEach(cat => agrupados[cat] = []);
 
-  // Agrupar data de la base de datos
   servicios.forEach(s => {
-    // Normalizar nombre de categoría o enviar a Extras si no coincide
-    let catNormalizada = s.categoria ? s.categoria.trim() : 'Extras';
-    if (!agrupados[catNormalizada]) {
-      agrupados[catNormalizada] = [];
-    }
-    agrupados[catNormalizada].push(s);
+    let cat = s.categoria ? s.categoria.trim() : 'Extras';
+    // Normalizar la primera letra mayúscula
+    cat = cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
+    if (!agrupados[cat]) agrupados[cat] = [];
+    agrupados[cat].push(s);
   });
 
-  // Renderizar HTML agrupado
   let htmlContent = '';
 
   Object.keys(agrupados).forEach(categoria => {
     const lista = agrupados[categoria];
-    if (lista.length === 0) return; // Ocultar categoría si no tiene elementos
+    if (lista.length === 0) return;
 
     htmlContent += `
-      <div class="bg-slate-100/70 px-3 py-1.5 font-bold text-slate-700 text-[11px] uppercase tracking-wider border-y border-slate-200/80 flex items-center justify-between">
+      <div class="bg-slate-100/80 px-3 py-1.5 font-bold text-slate-700 text-[10px] uppercase tracking-wider border-y border-slate-200 flex items-center justify-between">
         <span>📂 ${categoria}</span>
-        <span class="text-[10px] text-slate-400 font-normal">(${lista.length})</span>
+        <span class="text-slate-400 font-normal">(${lista.length})</span>
       </div>
       <div class="divide-y divide-slate-100 bg-white">
     `;
 
     lista.forEach(s => {
+      // Evalúa los posibles nombres de columna para el precio
+      const valorPrecio = s.precio !== undefined && s.precio !== null ? s.precio : (s.monto || s.precio_eur || 0);
+
       htmlContent += `
         <div class="flex items-center justify-between p-2.5 text-xs hover:bg-slate-50 transition">
           <div class="flex-1 pr-2">
-            <p class="font-semibold text-slate-800 capitalize">${s.nombre}</p>
+            <p class="font-semibold text-slate-800 capitalize">${s.nombre || s.servicio}</p>
           </div>
           
-          <!-- Edición de Precio e Interacción -->
           <div class="flex items-center gap-2">
             <div class="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 focus-within:border-slate-900 transition">
               <span class="text-slate-400 font-medium text-xs mr-1">€</span>
               <input 
                 type="number" 
                 step="0.01" 
-                value="${parseFloat(s.precio || 0).toFixed(2)}" 
+                value="${parseFloat(valorPrecio).toFixed(2)}" 
                 id="inputPrecio_${s.id}"
                 class="w-16 bg-transparent text-slate-800 font-bold text-xs text-right outline-none"
               />
@@ -458,7 +450,7 @@ window.cargarListaServiciosAdmin = async function() {
 
             <button 
               onclick="actualizarPrecioServicio('${s.id}')" 
-              class="bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold px-2 py-1.5 rounded-lg transition"
+              class="bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition"
               title="Guardar nuevo monto"
             >
               💾
@@ -479,33 +471,39 @@ window.cargarListaServiciosAdmin = async function() {
     htmlContent += `</div>`;
   });
 
-  container.innerHTML = htmlContent || `<p class="p-3 text-slate-400 text-center">No hay servicios registrados.</p>`;
+  container.innerHTML = htmlContent;
 };
 
-// Función para guardar la modificación de precio en Supabase
-window.actualizarPrecioServicio = async function(idServicio) {
-  const input = document.getElementById(`inputPrecio_${idServicio}`);
-  if (!input) return;
+// 2. Cargar Nómina de Especialistas
+window.cargarListaEspecialistasAdmin = async function() {
+  const container = document.getElementById('listaEspecialistasAdmin');
+  if (!container) return;
 
-  const nuevoPrecio = parseFloat(input.value);
+  const { data: especialistas, error } = await supabase
+    .from('especialistas')
+    .select('*');
 
-  if (isNaN(nuevoPrecio) || nuevoPrecio < 0) {
-    alert("Por favor, ingrese un monto válido.");
+  if (error || !especialistas || especialistas.length === 0) {
+    container.innerHTML = `<p class="p-3 text-slate-400 text-center text-xs">No hay especialistas registradas.</p>`;
     return;
   }
 
-  const { error } = await supabase
-    .from('servicios')
-    .update({ precio: nuevoPrecio })
-    .eq('id', idServicio);
+  container.innerHTML = especialistas.map(e => {
+    const comisionVal = e.porcentaje_comision !== undefined ? e.porcentaje_comision : (e.comision || e.porcentaje || 0);
 
-  if (error) {
-    alert("Error al actualizar el precio: " + error.message);
-  } else {
-    // Feedback visual momentáneo
-    input.classList.add('bg-emerald-100', 'text-emerald-800');
-    setTimeout(() => {
-      input.classList.remove('bg-emerald-100', 'text-emerald-800');
-    }, 1000);
-  }
+    return `
+      <div class="flex items-center justify-between p-3 text-xs hover:bg-slate-50 border-b border-slate-100 last:border-b-0">
+        <div>
+          <p class="font-bold text-slate-800 capitalize">${e.nombre}</p>
+          <p class="text-slate-400 text-[11px]">Comisión: <span class="font-semibold text-slate-600">${comisionVal}%</span></p>
+        </div>
+        <button 
+          onclick="eliminarEspecialista('${e.id}')" 
+          class="text-rose-500 hover:text-rose-700 font-bold text-xs px-2 py-1"
+        >
+          Eliminar
+        </button>
+      </div>
+    `;
+  }).join('');
 };
