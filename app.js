@@ -91,27 +91,7 @@ function autocompletarPrecioServicio(e) {
     calcularBolivares();
   }
 }
-async function cargarServiciosYEspe() {
-  // 1. Cargar servicios desde Supabase
-  const { data: servicios, error: errServ } = await supabase.from('servicios').select('*');
-  const selectServicio = document.getElementById('selectServicio');
-  if (servicios && selectServicio) {
-    selectServicio.innerHTML = '<option value="">Seleccione un servicio...</option>';
-    servicios.forEach(s => {
-      selectServicio.innerHTML += `<option value="${s.id}" data-precio="${s.precio}">${s.nombre} (€${s.precio})</option>`;
-    });
-  }
 
-  // 2. Cargar especialistas desde Supabase
-  const { data: especialistas, error: errEsp } = await supabase.from('especialistas').select('*');
-  const selectEspecialista = document.getElementById('selectEspecialista');
-  if (especialistas && selectEspecialista) {
-    selectEspecialista.innerHTML = '<option value="">Seleccione una especialista...</option>';
-    especialistas.forEach(e => {
-      selectEspecialista.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
-    });
-  }
-}
 // 3. CALCULAR BOLÍVARES AUTOMÁTICAMENTE
 function calcularBolivares() {
   const montoEur = parseFloat(document.getElementById('montoEur').value) || 0;
@@ -193,7 +173,6 @@ async function cargarVentasDia() {
     totalEur += parseFloat(v.monto_eur);
     totalBs += parseFloat(v.monto_ves);
 
-    // Acumular comisiones por especialista
     const espNombre = v.especialistas ? v.especialistas.nombre : 'General';
     const porcentaje = v.especialistas ? parseFloat(v.especialistas.porcentaje_comision) : 40;
     
@@ -219,12 +198,10 @@ async function cargarVentasDia() {
     `;
   });
 
-  // Actualizar tarjetas superiores
   document.getElementById('totalDiaEur').textContent = `€${totalEur.toFixed(2)}`;
   document.getElementById('totalDiaBs').textContent = `${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs`;
   document.getElementById('totalServiciosCount').textContent = ventas.length;
 
-  // Renderizar desglose de comisiones
   const comContainer = document.getElementById('comisionesContainer');
   comContainer.innerHTML = '';
   for (const [esp, info] of Object.entries(comisionesPorEsp)) {
@@ -239,8 +216,9 @@ async function cargarVentasDia() {
     `;
   }
 }
+
 // ==========================================
-// 1. CONTROL DE MODALES (Abrir y Cerrar)
+// CONTROL DE MODALES
 // ==========================================
 function abrirModalEspecialista() {
   document.getElementById('modalEspecialista').classList.remove('hidden');
@@ -260,9 +238,6 @@ function cerrarModalServicio() {
   document.getElementById('formServicio').reset();
 }
 
-// ==========================================
-// 2. GUARDAR ESPECIALISTA EN SUPABASE
-// ==========================================
 async function guardarEspecialista(event) {
   event.preventDefault();
   const nombre = document.getElementById('inputNombreEspecialista').value;
@@ -275,15 +250,12 @@ async function guardarEspecialista(event) {
   if (!error) {
     alert('¡Especialista registrado con éxito!');
     cerrarModalEspecialista();
-    cargarSelects(); // Recarga automáticamente los selects de tu app
+    cargarSelects();
   } else {
     alert('Error al registrar especialista: ' + error.message);
   }
 }
 
-// ==========================================
-// 3. GUARDAR SERVICIO EN SUPABASE
-// ==========================================
 async function guardarServicio(event) {
   event.preventDefault();
   const nombre = document.getElementById('inputNombreServicio').value;
@@ -297,51 +269,12 @@ async function guardarServicio(event) {
   if (!error) {
     alert('¡Servicio registrado con éxito!');
     cerrarModalServicio();
-    cargarSelects(); // Recarga automáticamente los selects de tu app
+    cargarSelects();
   } else {
     alert('Error al registrar servicio: ' + error.message);
   }
 }
 
-// ==========================================
-// 4. TASA BCV EN TIEMPO REAL
-// ==========================================
-async function inicializarTasaBcvRealtime() {
-  // A. Cargar la tasa actual al iniciar
-  const { data, error } = await supabase
-    .from('configuracion')
-    .select('valor')
-    .eq('clave', 'tasa_bcv')
-    .single();
-
-  if (data && !error) {
-    const inputTasa = document.getElementById('inputTasaBcv'); // Asegúrate que tu input en el HTML tenga este ID
-    if (inputTasa) inputTasa.value = data.valor;
-  }
-
-  // B. Escuchar cambios en tiempo real vía Supabase Realtime
-  supabase
-    .channel('cambios-tasa-bcv')
-    .on(
-      'postgres_changes',
-      { event: 'UPDATE', schema: 'public', table: 'configuracion', filter: 'clave=eq.tasa_bcv' },
-      (payload) => {
-        const inputTasa = document.getElementById('inputTasaBcv');
-        if (inputTasa && payload.new) {
-          inputTasa.value = payload.new.valor;
-          // Si tienes alguna función global que recalcule montos en bolívares, puedes llamarla aquí:
-          if (typeof recalcularMontos === 'function') recalcularMontos();
-        }
-      }
-    )
-    .subscribe();
-}
-
-// Llama a esta función cuando cargue la página dentro de tu script principal
-// inicializarTasaBcvRealtime();
-// ==========================================
-// CONTROL DE MODALES DE GESTIÓN (LISTAR / ELIMINAR)
-// ==========================================
 function abrirModalGestionServicios() {
   document.getElementById('modalGestionServicios').classList.remove('hidden');
   cargarServiciosAdmin();
@@ -360,9 +293,6 @@ function cerrarModalGestionEspecialistas() {
   document.getElementById('modalGestionEspecialistas').classList.add('hidden');
 }
 
-// ==========================================
-// CARGAR Y ELIMINAR SERVICIOS
-// ==========================================
 async function cargarServiciosAdmin() {
   const contenedor = document.getElementById('listaServiciosAdmin');
   contenedor.innerHTML = '<p class="text-center text-gray-400 py-4">Cargando servicios...</p>';
@@ -402,15 +332,12 @@ async function eliminarServicio(id) {
   if (!error) {
     alert('Servicio eliminado correctamente.');
     cargarServiciosAdmin();
-    if (typeof cargarSelects === 'function') cargarSelects(); // Actualiza el select principal
+    cargarSelects();
   } else {
     alert('No se pudo eliminar el servicio: ' + error.message);
   }
 }
 
-// ==========================================
-// CARGAR Y ELIMINAR ESPECIALISTAS
-// ==========================================
 async function cargarEspecialistasAdmin() {
   const contenedor = document.getElementById('listaEspecialistasAdmin');
   contenedor.innerHTML = '<p class="text-center text-gray-400 py-4">Cargando especialistas...</p>';
@@ -450,7 +377,7 @@ async function eliminarEspecialista(id) {
   if (!error) {
     alert('Especialista eliminado correctamente.');
     cargarEspecialistasAdmin();
-    if (typeof cargarSelects === 'function') cargarSelects(); // Actualiza el select principal
+    cargarSelects();
   } else {
     alert('No se pudo eliminar el especialista: ' + error.message);
   }
