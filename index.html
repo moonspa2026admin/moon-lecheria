@@ -214,7 +214,57 @@
         </div>
         <button onclick="cerrarModalAdminOpciones()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
       </div>
+	<!-- Modal: Registrar Servicio -->
+  <div id="modalServicio" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-xl border border-slate-100">
+      <div class="flex justify-between items-center mb-4 border-b pb-2">
+        <h3 class="text-sm font-bold text-slate-800">Registrar Nuevo Servicio</h3>
+        <button type="button" onclick="cerrarModalServicio()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">&times;</button>
+      </div>
+      <form id="formServicio" onsubmit="guardarServicio(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Nombre del Servicio</label>
+          <input type="text" id="inputNombreServicio" required class="w-full border rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900" placeholder="Ej. Manicure Completa">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Categoría</label>
+          <input type="text" id="inputCategoriaServicio" required class="w-full border rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900" placeholder="Ej. Uñas">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Precio en Euros (€)</label>
+          <input type="number" step="0.01" id="inputPrecioServicio" required class="w-full border rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900" placeholder="0.00">
+        </div>
+        <div class="flex justify-end gap-2 pt-3 border-t">
+          <button type="button" onclick="cerrarModalServicio()" class="px-3 py-2 border rounded-lg text-slate-600">Cancelar</button>
+          <button type="submit" class="px-4 py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800">Guardar Servicio</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
+  <!-- Modal: Registrar Especialista -->
+  <div id="modalEspecialista" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-xl border border-slate-100">
+      <div class="flex justify-between items-center mb-4 border-b pb-2">
+        <h3 class="text-sm font-bold text-slate-800">Registrar Nueva Especialista</h3>
+        <button type="button" onclick="cerrarModalEspecialista()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">&times;</button>
+      </div>
+      <form id="formEspecialista" onsubmit="guardarEspecialista(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Nombre Completo</label>
+          <input type="text" id="inputNombreEspecialista" required class="w-full border rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900" placeholder="Ej. María Pérez">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Porcentaje de Comisión (%)</label>
+          <input type="number" step="0.1" id="inputComisionEspecialista" required class="w-full border rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900" placeholder="Ej. 50">
+        </div>
+        <div class="flex justify-end gap-2 pt-3 border-t">
+          <button type="button" onclick="cerrarModalEspecialista()" class="px-3 py-2 border rounded-lg text-slate-600">Cancelar</button>
+          <button type="submit" class="px-4 py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800">Guardar Especialista</button>
+        </div>
+      </form>
+    </div>
+  </div>
       <!-- Contenido / Formularios / Listas -->
       <div class="p-6 max-h-[75vh] overflow-y-auto space-y-6 text-xs">
         
@@ -283,49 +333,36 @@
     }
 
     function verificarAccesoAdmin() {
-      let clave = prompt("Ingrese la clave administrativa:");
-      if (clave === "admin123") {
-        document.getElementById('modalAdminOpciones').classList.remove('hidden');
-      } else if (clave !== null) {
-        alert("Clave incorrecta. Acceso denegado.");
-      }
-    }
+  let clave = prompt("Ingrese la clave administrativa:");
+  if (clave === "admin123") {
+    document.getElementById('modalAdminOpciones').classList.remove('hidden');
+    // Llama directamente a la carga de datos
+    if (typeof window.cargarListaServiciosAdmin === 'function') window.cargarListaServiciosAdmin();
+    if (typeof window.cargarListaEspecialistasAdmin === 'function') window.cargarListaEspecialistasAdmin();
+  } else if (clave !== null) {
+    alert("Clave incorrecta. Acceso denegado.");
+  }
+}
 
-    function cerrarModalAdminOpciones() {
-      document.getElementById('modalAdminOpciones').classList.add('hidden');
-    }
+function abrirModalServicio() {
+  document.getElementById('modalServicio').classList.remove('hidden');
+}
 
-    function abrirModalServicio() {
-      document.getElementById('modalServicio').classList.remove('hidden');
-    }
+function cerrarModalServicio() {
+  document.getElementById('modalServicio').classList.add('hidden');
+}
 
-    function cerrarModalServicio() {
-      document.getElementById('modalServicio').classList.add('hidden');
-    }
+function abrirModalEspecialista() {
+  document.getElementById('modalEspecialista').classList.remove('hidden');
+}
 
-    function abrirModalEspecialista() {
-      document.getElementById('modalEspecialista').classList.remove('hidden');
-    }
+function cerrarModalEspecialista() {
+  document.getElementById('modalEspecialista').classList.add('hidden');
+}
 
-    function cerrarModalEspecialista() {
-      document.getElementById('modalEspecialista').classList.add('hidden');
-    }
-
-    function abrirModalGestionServicios() {
-      document.getElementById('modalGestionServicios').classList.remove('hidden');
-    }
-
-    function cerrarModalGestionServicios() {
-      document.getElementById('modalGestionServicios').classList.add('hidden');
-    }
-
-    function abrirModalGestionEspecialistas() {
-      document.getElementById('modalGestionEspecialistas').classList.remove('hidden');
-    }
-
-    function cerrarModalGestionEspecialistas() {
-      document.getElementById('modalGestionEspecialistas').classList.add('hidden');
-    }
+function cerrarModalAdminOpciones() {
+  document.getElementById('modalAdminOpciones').classList.add('hidden');
+}
   </script>
   <!-- Script principal de la aplicación -->
   <script type="module" src="app.js"></script>

@@ -385,6 +385,50 @@ window.abrirModalGestionServicios = abrirModalGestionServicios;
 window.cerrarModalGestionServicios = cerrarModalGestionServicios;
 window.abrirModalGestionEspecialistas = abrirModalGestionEspecialistas;
 window.cerrarModalGestionEspecialistas = cerrarModalGestionEspecialistas;
+// Agrega o ajusta estas funciones en app.js para renderizar los datos dentro de las listas del modal
+window.cargarListaServiciosAdmin = async function() {
+  const container = document.getElementById('listaServiciosAdmin');
+  if (!container) return;
+
+  const { data: servicios, error } = await supabase.from('servicios').select('*').order('nombre');
+  
+  if (error || !servicios || servicios.length === 0) {
+    container.innerHTML = `<p class="p-3 text-slate-400 text-center">No hay servicios registrados.</p>`;
+    return;
+  }
+
+  container.innerHTML = servicios.map(s => `
+    <div class="flex items-center justify-between p-3 text-xs hover:bg-slate-100/50">
+      <div>
+        <p class="font-bold text-slate-800">${s.nombre}</p>
+        <p class="text-slate-400 font-medium">€${parseFloat(s.precio || 0).toFixed(2)}</p>
+      </div>
+      <button onclick="eliminarServicio('${s.id}')" class="text-rose-500 hover:text-rose-700 font-bold">Eliminar</button>
+    </div>
+  `).join('');
+};
+
+window.cargarListaEspecialistasAdmin = async function() {
+  const container = document.getElementById('listaEspecialistasAdmin');
+  if (!container) return;
+
+  const { data: especialistas, error } = await supabase.from('especialistas').select('*').order('nombre');
+  
+  if (error || !especialistas || especialistas.length === 0) {
+    container.innerHTML = `<p class="p-3 text-slate-400 text-center">No hay especialistas registradas.</p>`;
+    return;
+  }
+
+  container.innerHTML = especialistas.map(e => `
+    <div class="flex items-center justify-between p-3 text-xs hover:bg-slate-100/50">
+      <div>
+        <p class="font-bold text-slate-800">${e.nombre}</p>
+        <p class="text-slate-400 font-medium">Comisión: ${e.porcentaje_comision || e.comision || 0}%</p>
+      </div>
+      <button onclick="eliminarEspecialista('${e.id}')" class="text-rose-500 hover:text-rose-700 font-bold">Eliminar</button>
+    </div>
+  `).join('');
+};
 
 function verificarAccesoAdmin() {
       let clave = prompt("Ingrese la clave administrativa:");
