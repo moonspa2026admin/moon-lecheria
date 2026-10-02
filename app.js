@@ -577,38 +577,52 @@ window.eliminarEspecialista = async function(idEspecialista) {
     cargarSelects();
   }
 };
-async function obtenerTasaEuroBCV() {
-  const elementoMonto = document.getElementById('tasa-euro-monto');
-  
-  try {
-    // API pública para consulta de tasas BCV actualizadas en tiempo real
-    const response = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar?page=bcv');
-    const data = await response.json();
-    
-    // Obtenemos el valor de la tasa del Euro BCV
-    const euroData = data.monedas?.eur || data.eur;
-    
-    if (euroData && euroData.price) {
-      const tasaFormateada = new Intl.NumberFormat('es-VE', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 4
-      }).format(euroData.price);
+// Obtener Tasa Euro BCV en tiempo real con respaldo
+async function cargarTasaBcvEnLinea() {
+  const elMonto = document.getElementById('tasa-euro-monto');
+  if (!elMonto) return;
 
-      elementoMonto.textContent = `${tasaFormateada} Bs.`;
-    } else {
-      elementoMonto.textContent = "No disponible";
+  try {
+    // 1. Intentar consulta principal mediante PyDolarVenezuela
+    let res = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar?page=bcv');
+    let data = await res.json();
+    let euroValor = data.monedas?.eur?.price || data.eur?.price;
+
+    // 2. Respaldo directo a CriptoYa en caso de no obtener valor
+    if (!euroValor) {
+      res = await fetch('https://criptoya.com/api/bcv');
+      data = await res.json();
+      euroValor = data.eur;
     }
-  } catch (error) {
-    console.error('Error al obtener la tasa del Euro BCV:', error);
-    elementoMonto.textContent = "Error al conectar";
+
+    if (euroValor && euroValor > 0) {
+      tasaActual = parseFloat(euroValor);
+      
+      elMonto.textContent = `${tasaActual.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs`;
+
+      // Recalcular montos de ventas si están cargados
+      if (typeof calcularBolivares === 'function') calcularBolivares();
+      if (typeof cargarVentasDia === 'function') cargarVentasDia();
+    } else {
+      elMonto.textContent = 'No disponible';
+    }
+  } catch (err) {
+    console.error('Error al conectar con la tasa del BCV:', err);
+    elMonto.textContent = 'Error de conexión';
   }
 }
 
-// Ejecutar al cargar la interfaz
-document.addEventListener('DOMContentLoaded', () => {
-  obtenerTasaEuroBCV();
-  // Recargar automáticamente cada 10 minutos (600,000 ms)
-  setInterval(obtenerTasaEuroBCV, 600000);
+// Inicializar en DOMContentLoaded
+document.addEventListener('DOMContentLoaded', async () => {
+  await cargarTasaBcvEnLinea();
+  // Actualizar automáticamente cada 10 minutos
+  setInterval(cargarTasaBcvEnLinea, 600000);
+});
+// Inicializar la carga automática de la tasa BCV
+document.addEventListener('DOMContentLoaded', async () => {
+  await cargarTasaBcvEnLinea();
+  // Recargar automáticamente cada 10 minutos (600.000 ms)
+  setInterval(cargarTasaBcvEnLinea, 600000);
 });
 // LISTENERS DE TECLADO Y CLIC FUERA DEL MODAL
 window.addEventListener('keydown', (e) => {
