@@ -474,16 +474,25 @@ window.cargarListaServiciosAdmin = async function() {
   container.innerHTML = htmlContent;
 };
 
-// 2. Cargar Nómina de Especialistas
+// 2. Cargar Nómina de Especialistas (con filtro activo y edición de comisión)
 window.cargarListaEspecialistasAdmin = async function() {
   const container = document.getElementById('listaEspecialistasAdmin');
   if (!container) return;
 
+  // Consultar solo especialistas activas o la lista completa
   const { data: especialistas, error } = await supabase
     .from('especialistas')
-    .select('*');
+    .select('*')
+    .eq('activo', true)
+    .order('nombre');
 
-  if (error || !especialistas || especialistas.length === 0) {
+  if (error) {
+    console.error("Error al cargar especialistas:", error);
+    container.innerHTML = `<p class="p-3 text-rose-500 text-center text-xs">Error al cargar: ${error.message}</p>`;
+    return;
+  }
+
+  if (!especialistas || especialistas.length === 0) {
     container.innerHTML = `<p class="p-3 text-slate-400 text-center text-xs">No hay especialistas registradas.</p>`;
     return;
   }
@@ -492,18 +501,86 @@ window.cargarListaEspecialistasAdmin = async function() {
     const comisionVal = e.porcentaje_comision !== undefined ? e.porcentaje_comision : (e.comision || e.porcentaje || 0);
 
     return `
-      <div class="flex items-center justify-between p-3 text-xs hover:bg-slate-50 border-b border-slate-100 last:border-b-0">
-        <div>
+      <div class="flex items-center justify-between p-2.5 text-xs hover:bg-slate-50 transition border-b border-slate-100 last:border-b-0">
+        <div class="flex-1 pr-2">
           <p class="font-bold text-slate-800 capitalize">${e.nombre}</p>
-          <p class="text-slate-400 text-[11px]">Comisión: <span class="font-semibold text-slate-600">${comisionVal}%</span></p>
         </div>
-        <button 
-          onclick="eliminarEspecialista('${e.id}')" 
-          class="text-rose-500 hover:text-rose-700 font-bold text-xs px-2 py-1"
-        >
-          Eliminar
-        </button>
+
+        <div class="flex items-center gap-2">
+          <!-- Edición rápida de Comisión -->
+          <div class="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 focus-within:border-slate-900 transition">
+            <span class="text-slate-400 font-medium text-xs mr-1">%</span>
+            <input 
+              type="number" 
+              step="0.1" 
+              value="${parseFloat(comisionVal).toFixed(0)}" 
+              id="inputComision_${e.id}"
+              class="w-12 bg-transparent text-slate-800 font-bold text-xs text-right outline-none"
+            />
+          </div>
+
+          <button 
+            onclick="actualizarComisionEspecialista('${e.id}')" 
+            class="bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition"
+            title="Guardar porcentaje"
+          >
+            💾
+          </button>
+
+          <button 
+            onclick="eliminarEspecialista('${e.id}')" 
+            class="text-rose-500 hover:text-rose-700 font-bold text-xs px-1"
+            title="Desactivar o eliminar especialista"
+          >
+            ✕
+          </button>
+        </div>
       </div>
     `;
   }).join('');
+};
+
+// Guardar cambios de porcentaje de comisión en Supabase
+window.actualizarComisionEspecialista = async function(idEspecialista) {
+  const input = document.getElementById(`inputComision_${idEspecialista}`);
+  if (!input) return;
+
+  const nuevaComision = parseFloat(input.value);
+
+  if (isNaN(nuevaComision) || nuevaComision < 0) {
+    alert("Por favor, ingrese un porcentaje válido.");
+    return;
+  }
+
+  const { error } = await supabase
+    .from('especialistas')
+    .update({ porcentaje_comision: nuevaComision })
+    .eq('id', idEspecialista);
+
+  if (error) {
+    alert("Error al actualizar la comisión: " + error.message);
+  } else {
+    input.classList.add('bg-emerald-100', 'text-emerald-800');
+    setTimeout(() => {
+      input.classList.remove('bg-emerald-100', 'text-emerald-800');
+    }, 1000);
+  }
+};
+
+// Función para eliminar / desactivar especialista
+window.eliminarEspecialista = async function(idEspecialista) {
+  if (!confirm("¿Está seguro de que desea eliminar esta especialista?")) return;
+
+  // Soft delete marcando activo = false
+  const { error } = await supabase
+    .from('especialistas')
+    .update({ activo: false })
+    .eq('id', idEspecialista);
+
+  if (error) {
+    alert("Error al eliminar: " + error.message);
+  } else {
+    window.cargarListaEspecialistasAdmin();
+    if (typeof cargarSelects === 'function') cargarSelects();
+  }
 };
