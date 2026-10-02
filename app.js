@@ -382,3 +382,36 @@ async function eliminarEspecialista(id) {
     alert('No se pudo eliminar el especialista: ' + error.message);
   }
 }
+// ==========================================
+// EXPONER FUNCIONES AL ÁMBITO GLOBAL (WINDOW)
+// ==========================================
+window.abrirModalVenta = function() {
+  document.getElementById('modalVenta').classList.remove('hidden');
+  if (typeof cargarSelects === 'function') cargarSelects();
+};
+
+window.cerrarModalVenta = function() {
+  document.getElementById('modalVenta').classList.add('hidden');
+};
+
+window.abrirModalEspecialista = abrirModalEspecialista;
+window.cerrarModalEspecialista = cerrarModalEspecialista;
+window.abrirModalServicio = abrirModalServicio;
+window.cerrarModalServicio = cerrarModalServicio;
+window.abrirModalGestionServicios = abrirModalGestionServicios;
+window.cerrarModalGestionServicios = cerrarModalGestionServicios;
+window.abrirModalGestionEspecialistas = abrirModalGestionEspecialistas;
+window.cerrarModalGestionEspecialistas = cerrarModalGestionEspecialistas;
+
+window.verificarAccesoAdmin = function() {
+  let clave = prompt("Ingrese la clave administrativa:");
+  if (clave === "admin123") {
+    document.getElementById('modalAdminOpciones').classList.remove('hidden');
+  } else if (clave !== null) {
+    alert("Clave incorrecta. Acceso denegado.");
+  }
+};
+
+window.cerrarModalAdminOpciones = function() {
+  document.getElementById('modalAdminOpciones').classList.add('hidden');
+};
