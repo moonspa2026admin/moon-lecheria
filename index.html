@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -10,68 +10,61 @@
 <body class="bg-[#faf7f5] text-slate-800 font-sans antialiased min-h-screen pb-12">
 
   <!-- CABECERA ÚNICA -->
-<header class="bg-white/90 backdrop-blur-md border-b border-rose-100 px-6 py-3.5 shadow-xs sticky top-0 z-30">
-  <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
-    
-    <!-- Logo Oficial y Título -->
-    <div class="flex items-center space-x-3">
-      <div class="relative">
-        <img src="logo.PNG" alt="Moon Lechería Logo" class="h-10 w-10 object-cover rounded-xl shadow-2xs border border-rose-100">
-        <div class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 border-2 border-white rounded-full"></div>
-      </div>
-      <div>
-        <h1 class="text-base font-bold text-slate-800 tracking-tight">Moon Spa Lecheria · Control Administrativo</h1>
-        <p class="text-[11px] text-rose-400 font-medium">Gestión Integral de Ventas, Servicios y Cierres</p>
-      </div>
-    </div>
-
-    <!-- Badge Compacto y Simbólico: Tasa BCV (€) -->
-    <div class="inline-flex items-center gap-2 bg-emerald-50/80 border border-emerald-200/80 rounded-full px-3 py-1 shadow-2xs">
-      <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-      <span class="text-[11px] font-semibold text-emerald-800 uppercase tracking-wide">BCV (€):</span>
-      <span id="tasa-euro-monto" class="text-xs font-black text-emerald-900">Cargando...</span>
-    </div>
-
-  </div>
-</header>
-
-<!-- CONTENEDOR PRINCIPAL -->
-<main class="max-w-7xl mx-auto px-6 py-6">
-  
-  <!-- BARRA DE ACCESOS (Botones Pastel) -->
-  <div class="mb-6">
-    <div class="bg-white p-3.5 rounded-2xl border border-rose-100/60 shadow-2xs flex flex-wrap gap-3 items-center justify-between">
+  <header class="bg-white/90 backdrop-blur-md border-b border-rose-100 px-6 py-3.5 shadow-xs sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
       
-      <!-- Botón Verde Claro Pastel -->
-      <button onclick="window.abrirModalVenta()" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-xs px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 shadow-2xs border border-emerald-200">
-        <span>➕</span> Registrar Nuevo Servicio / Venta
-      </button>
+      <!-- Logo Oficial y Título -->
+      <div class="flex items-center space-x-3">
+        <div class="relative">
+          <img src="logo.PNG" alt="Moon Lechería Logo" class="h-10 w-10 object-cover rounded-xl shadow-2xs border border-rose-100">
+          <div class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 border-2 border-white rounded-full"></div>
+        </div>
+        <div>
+          <h1 class="text-base font-bold text-slate-800 tracking-tight">Moon Spa Lecheria · Control Administrativo</h1>
+          <p class="text-[11px] text-rose-400 font-medium">Gestión Integral de Ventas, Servicios y Cierres</p>
+        </div>
+      </div>
 
-      <!-- Botón Rosa Claro Pastel -->
-      <button onclick="window.verificarAccesoAdmin()" class="bg-rose-100 hover:bg-rose-200 text-rose-900 text-xs px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 border border-rose-200 shadow-2xs">
-        <span>🔐</span> Módulo Administrativo (Clave)
-      </button>
+      <!-- Badge Compacto y Simbólico: Tasa BCV (€) -->
+      <div class="inline-flex items-center gap-2 bg-emerald-50/80 border border-emerald-200/80 rounded-full px-3 py-1 shadow-2xs">
+        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+        <span class="text-[11px] font-semibold text-emerald-800 uppercase tracking-wide">BCV (€):</span>
+        <span id="tasa-euro-monto" class="text-xs font-black text-emerald-900">Cargando...</span>
+      </div>
 
     </div>
-  </div>
+  </header>
 
-  <!-- BOTONES DE ACCIÓN PARA CIERRES (Tonos Pastel Variados) -->
-  <div class="flex flex-wrap gap-3 my-4">
-    <!-- Amarillo Suave -->
-    <button onclick="window.openModal('modalDiario')" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-200 px-4 py-2 rounded-xl text-xs font-bold transition shadow-2xs">
-      📋 Cierre Diario
-    </button>
-    <!-- Azul/Cielo Pastel -->
-    <button onclick="window.openModal('modalSemanal')" class="bg-sky-100 hover:bg-sky-200 text-sky-900 border border-sky-200 px-4 py-2 rounded-xl text-xs font-bold transition shadow-2xs">
-      📅 Resumen Semanal
-    </button>
-    <!-- Lila/Rosa Suave -->
-    <button onclick="window.openModal('modalMensual')" class="bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-200 px-4 py-2 rounded-xl text-xs font-bold transition shadow-2xs">
-      📊 Dashboard Mensual
-    </button>
-  </div>
+  <!-- CONTENEDOR PRINCIPAL -->
+  <main class="max-w-7xl mx-auto px-6 py-6">
+    
+    <!-- BARRA DE ACCESOS -->
+    <div class="mb-6">
+      <div class="bg-white p-3.5 rounded-2xl border border-rose-100/60 shadow-2xs flex flex-wrap gap-3 items-center justify-between">
+        <button onclick="window.abrirModalVenta()" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-xs px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 shadow-2xs border border-emerald-200">
+          <span>➕</span> Registrar Nuevo Servicio / Venta
+        </button>
 
-    <!-- SECCIÓN PRINCIPAL DE MÉTRICAS Y TABLA -->
+        <button onclick="window.verificarAccesoAdmin()" class="bg-rose-100 hover:bg-rose-200 text-rose-900 text-xs px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 border border-rose-200 shadow-2xs">
+          <span>🔐</span> Módulo Administrativo (Clave)
+        </button>
+      </div>
+    </div>
+
+    <!-- BOTONES DE ACCIÓN PARA CIERRES -->
+    <div class="flex flex-wrap gap-3 my-4">
+      <button onclick="window.openModal('modalDiario')" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-200 px-4 py-2 rounded-xl text-xs font-bold transition shadow-2xs">
+        📋 Cierre Diario
+      </button>
+      <button onclick="window.openModal('modalSemanal')" class="bg-sky-100 hover:bg-sky-200 text-sky-900 border border-sky-200 px-4 py-2 rounded-xl text-xs font-bold transition shadow-2xs">
+        📅 Resumen Semanal
+      </button>
+      <button onclick="window.openModal('modalMensual')" class="bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-200 px-4 py-2 rounded-xl text-xs font-bold transition shadow-2xs">
+        📊 Dashboard Mensual
+      </button>
+    </div>
+
+    <!-- MÉTRICAS Y TABLA -->
     <div class="space-y-6">
       
       <!-- Resumen Cards del Día -->
@@ -130,6 +123,55 @@
   </main>
 
   <!-- MODALES FLOTANTES -->
+
+  <!-- Modal Táctil: Detalle Especialista (NUEVO / AGREGADO) -->
+  <div id="modalDetalleEspecialista" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-xl shadow-2xl border border-slate-100 my-auto">
+      <div class="flex justify-between items-center mb-4 border-b pb-3">
+        <div>
+          <h3 id="modalDetalleNombre" class="text-base font-bold text-slate-900">Detalle Especialista</h3>
+          <p id="modalDetalleSubtitulo" class="text-xs text-slate-500">Servicios realizados hoy</p>
+        </div>
+        <button onclick="window.closeModal('modalDetalleEspecialista')" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+      </div>
+
+      <div class="overflow-x-auto max-h-60 mb-4 border rounded-xl">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead class="bg-slate-100 text-slate-600 border-b">
+            <tr>
+              <th class="p-2.5">Clienta</th>
+              <th class="p-2.5">Servicio</th>
+              <th class="p-2.5">Pago</th>
+              <th class="p-2.5 text-right">Monto</th>
+              <th class="p-2.5 text-right">Comisión</th>
+            </tr>
+          </thead>
+          <tbody id="tablaDetalleEspecialistaBody" class="divide-y divide-slate-100">
+            <tr>
+              <td colspan="5" class="p-4 text-center text-slate-400">Cargando detalle...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs">
+        <div>
+          <span class="text-slate-500 block">Total Recaudado:</span>
+          <span id="modalTotalRecaudado" class="font-bold text-slate-800 text-sm">0.00 €</span>
+        </div>
+        <div class="text-right">
+          <span class="text-slate-500 block">Comisión Total:</span>
+          <span id="modalTotalComision" class="font-extrabold text-emerald-600 text-sm">0.00 €</span>
+        </div>
+      </div>
+
+      <div class="mt-4 flex justify-end">
+        <button onclick="window.closeModal('modalDetalleEspecialista')" class="px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl hover:bg-slate-800 transition">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal: Registrar Venta / Servicio -->
   <div id="modalVenta" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 overflow-y-auto">
