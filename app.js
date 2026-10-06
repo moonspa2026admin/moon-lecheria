@@ -213,6 +213,15 @@ window.renderCierreSemanal = async function() {
 
   if (elBalanceSemanal) elBalanceSemanal.textContent = `€${balanceNeto.toFixed(2)}`;
   if (elCuentasPendientes) elCuentasPendientes.textContent = `Cuentas por Cobrar Pendientes: €${cuentasPendientes.toFixed(2)}`;
+
+  // 1. Totalizar consumos de Olivetta en la semana
+  const totalOlivettaSemanaUsd = ventas.reduce((acc, v) => acc + (parseFloat(v.monto_olivetta_usd) || 0), 0);
+
+  // 2. Renderizar tarjeta o fila de resumen para Olivetta
+  const elOlivettaContainer = document.getElementById('totalOlivettaSemanalVal');
+  if (elOlivettaContainer) {
+    elOlivettaContainer.textContent = `$${totalOlivettaSemanaUsd.toFixed(2)} USD`;
+  }
 };
 
 // 8. CIERRE MENSUAL DINÁMICO
@@ -343,6 +352,7 @@ async function registrarVenta(e) {
   const referenciaPago = document.getElementById('referenciaPago').value;
   const propinaEur = parseFloat(document.getElementById('propinaEur').value) || 0;
   const estadoPago = document.getElementById('estadoPago').value;
+  const montoOlivettaUsd = parseFloat(document.getElementById('montoOlivettaUsd')?.value) || 0;
 
   const montoVes = montoEur * tasaActual;
 
@@ -358,7 +368,8 @@ async function registrarVenta(e) {
     metodo_pago: metodoPago,
     referencia_pago: referenciaPago,
     propina_eur: propinaEur,
-    estado_pago: estadoPago
+    estado_pago: estadoPago,
+    monto_olivetta_usd: montoOlivettaUsd
   };
 
   const { error } = await supabase.from('ventas_diarias').insert([nuevaVenta]);
@@ -1029,6 +1040,7 @@ window.addEventListener('click', (e) => {
     }
   });
 });
+
 // ==========================================
 // MÓDULO DE CUENTAS POR COBRAR Y WHATSAPP
 // ==========================================
@@ -1143,6 +1155,7 @@ window.procesarLiquidarPago = async function(e) {
     if (typeof cargarVentasDia === 'function') cargarVentasDia();
   }
 };
+
 function construirMensajeWhatsApp(venta, tasa) {
   const montoEur = parseFloat(venta.monto_eur || 0).toFixed(2);
   const montoBs = (montoEur * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
