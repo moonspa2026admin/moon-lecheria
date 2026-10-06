@@ -107,7 +107,6 @@ window.renderCierreSemanal = async function() {
 
   if (!tbody) return;
 
-  // Rango de la semana actual (Lunes a Domingo)
   const ahora = new Date();
   const primerDiaSemana = new Date(ahora.setDate(ahora.getDate() - ahora.getDay() + 1));
   primerDiaSemana.setHours(0,0,0,0);
@@ -155,7 +154,6 @@ window.renderCierreSemanal = async function() {
 
   tbody.innerHTML = htmlTabla || `<tr><td colspan="6" class="p-4 text-center text-slate-400">Sin datos esta semana.</td></tr>`;
 
-  // Cálculos dinámicos por área
   const ingresosPorCategoria = {};
   let totalVentasSemanaEur = 0;
   let cuentasPendientes = 0;
@@ -180,7 +178,6 @@ window.renderCierreSemanal = async function() {
     `).join('') || '<p class="text-xs text-slate-400">Sin registros</p>';
   }
 
-  // Agrupamiento dinámico por método de pago (Incluye PDV)
   const distribucionPagos = {};
 
   ventas.forEach(v => {
@@ -195,10 +192,8 @@ window.renderCierreSemanal = async function() {
     distribucionPagos[metodo].bs += montoBs;
   });
 
-  // Renderizado dinámico en la tarjeta de distribución de pagos
   if (elDistribucionPago) {
     elDistribucionPago.innerHTML = Object.entries(distribucionPagos).map(([metodo, totales]) => {
-      // Si el pago fue en moneda local (Bs) o Punto de Venta, mostramos equivalencia en Bs
       const esMonedaNacional = metodo.includes('Pago Móvil') || metodo.includes('Punto de Venta') || metodo.includes('PDV');
       const valorMostrar = esMonedaNacional 
         ? `${totales.bs.toLocaleString('es-VE', {minimumFractionDigits: 2})} Bs` 
@@ -293,6 +288,24 @@ async function cargarSelects() {
   }
 }
 
+// Cargar porcentaje automático al seleccionar especialista
+window.alCambiarEspecialista = function() {
+  const selectEspecialista = document.getElementById('selectEspecialista');
+  const inputPorcentaje = document.getElementById('porcentajeComision');
+  if (!selectEspecialista || !inputPorcentaje) return;
+
+  const especialistaId = selectEspecialista.value;
+  if (!especialistaId) {
+    inputPorcentaje.value = '';
+    return;
+  }
+
+  const especialista = especialistasData.find(e => e.id == especialistaId);
+  if (especialista) {
+    inputPorcentaje.value = especialista.porcentaje_comision || 50;
+  }
+};
+
 function autocompletarPrecioServicio(e) {
   const selectedOption = e.target.options[e.target.selectedIndex];
   const precio = selectedOption.getAttribute('data-precio');
@@ -318,10 +331,14 @@ function calcularBolivares() {
 async function registrarVenta(e) {
   e.preventDefault();
 
+  const fechaInput = document.getElementById('fechaVenta')?.value;
+  const fechaSeleccionada = fechaInput ? new Date(fechaInput).toISOString() : new Date().toISOString();
+
   const nombreClienta = document.getElementById('nombreClienta').value;
   const servicioId = document.getElementById('selectServicio').value;
   const especialistaId = document.getElementById('selectEspecialista').value;
-  const montoEur = parseFloat(document.getElementById('montoEur').value);
+  const porcentajeComision = parseFloat(document.getElementById('porcentajeComision')?.value) || 0;
+  const montoEur = parseFloat(document.getElementById('montoEur').value) || 0;
   const metodoPago = document.getElementById('metodoPago').value;
   const referenciaPago = document.getElementById('referenciaPago').value;
   const propinaEur = parseFloat(document.getElementById('propinaEur').value) || 0;
@@ -330,9 +347,11 @@ async function registrarVenta(e) {
   const montoVes = montoEur * tasaActual;
 
   const nuevaVenta = {
+    fecha: fechaSeleccionada,
     nombre_clienta: nombreClienta,
     servicio_id: servicioId,
     especialista_id: especialistaId,
+    porcentaje_comision: porcentajeComision,
     monto_eur: montoEur,
     tasa_aplicada: tasaActual,
     monto_ves: montoVes,
@@ -349,7 +368,9 @@ async function registrarVenta(e) {
   } else {
     alert("¡Venta registrada con éxito!");
     document.getElementById('formVenta').reset();
-    document.getElementById('montoBvInput').value = '0.00 Bs';
+    if (document.getElementById('montoBvInput')) {
+      document.getElementById('montoBvInput').value = '0.00 Bs';
+    }
     window.cerrarModalVenta();
     cargarVentasDia();
   }
@@ -423,7 +444,6 @@ async function cargarVentasDia() {
   document.getElementById('totalDiaBs').textContent = `${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs`;
   document.getElementById('totalServiciosCount').textContent = ventas.length;
 
-  // Renderizar Tarjetas Táctiles/Clicables
   const comContainer = document.getElementById('comisionesContainer');
   if (comContainer) {
     comContainer.innerHTML = '';
@@ -637,6 +657,13 @@ window.closeModal = function(modalId) {
 window.abrirModalVenta = function() {
   window.openModal('modalVenta');
   cargarSelects();
+
+  // Asigna la fecha actual por defecto si no se ha elegido ninguna
+  const fechaInput = document.getElementById('fechaVenta');
+  if (fechaInput && !fechaInput.value) {
+    const hoy = new Date().toISOString().split('T')[0];
+    fechaInput.value = hoy;
+  }
 };
 
 window.cerrarModalVenta = function() {
@@ -983,7 +1010,9 @@ const todosLosModales = [
   'modalAdminOpciones', 
   'modalServicio', 
   'modalEspecialista', 
-  'modalDetalleEspecialista'
+  'modalDetalleEspecialista',
+  'modalCuentasPendientes',
+  'modalLiquidarPago'
 ];
 
 window.addEventListener('keydown', (e) => {
@@ -1000,3 +1029,126 @@ window.addEventListener('click', (e) => {
     }
   });
 });
+// ==========================================
+// MÓDULO DE CUENTAS POR COBRAR Y WHATSAPP
+// ==========================================
+
+// 1. Cargar y renderizar la lista de clientes pendientes
+window.cargarCuentasPendientes = async function() {
+  const container = document.getElementById('listaCuentasPendientes');
+  if (!container) return;
+
+  container.innerHTML = `<p class="p-4 text-center text-slate-400 text-xs">Cargando cuentas pendientes...</p>`;
+
+  const { data: ventasPendientes, error } = await supabase
+    .from('ventas_diarias')
+    .select(`
+      *,
+      servicios (nombre),
+      especialistas (nombre)
+    `)
+    .eq('estado_pago', 'Por Cobrar')
+    .order('fecha', { ascending: false });
+
+  if (error) {
+    container.innerHTML = `<p class="p-4 text-center text-rose-500 text-xs">Error al cargar pendientes: ${error.message}</p>`;
+    return;
+  }
+
+  if (!ventasPendientes || ventasPendientes.length === 0) {
+    container.innerHTML = `<div class="p-6 text-center text-emerald-600 font-medium text-xs">🎉 ¡Excelente! No hay cuentas por cobrar pendientes.</div>`;
+    return;
+  }
+
+  let html = '';
+  ventasPendientes.forEach(v => {
+    const fecha = new Date(v.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const servicio = v.servicios ? v.servicios.nombre : 'Servicio';
+    const especialista = v.especialistas ? v.especialistas.nombre : 'Especialista';
+    const montoEur = parseFloat(v.monto_eur || 0);
+    const montoBs = montoEur * (tasaActual || 0);
+    const mensajeWA = construirMensajeWhatsApp(v, tasaActual);
+
+    html += `
+      <div class="p-3.5 bg-slate-50 border border-amber-200 rounded-xl flex flex-col gap-2 hover:border-amber-400 transition">
+        <div class="flex justify-between items-start">
+          <div>
+            <h4 class="font-bold text-slate-800 text-sm capitalize">${v.nombre_clienta}</h4>
+            <p class="text-[11px] text-slate-500">${servicio} • 💆‍♀️ ${especialista} • 📅 ${fecha}</p>
+          </div>
+          <div class="text-right">
+            <span class="text-amber-700 font-extrabold text-sm block">€${montoEur.toFixed(2)}</span>
+            <span class="text-[10px] text-slate-500 block">${montoBs.toLocaleString('es-VE', {minimumFractionDigits: 2})} Bs</span>
+          </div>
+        </div>
+
+        <div class="flex gap-2 mt-1 border-t border-slate-200/60 pt-2">
+          <!-- Botón de Recordatorio por WhatsApp -->
+          <a 
+            href="https://wa.me/?text=${mensajeWA}" 
+            target="_blank" 
+            class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[11px] py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition"
+          >
+            💬 Recordar por WhatsApp
+          </a>
+
+          <!-- Botón para Saldar/Liquidar la Deuda -->
+          <button 
+            onclick="window.prepararLiquidarPago('${v.id}', '${v.nombre_clienta}', ${montoEur})" 
+            class="bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] py-1.5 px-3 rounded-lg transition"
+          >
+            ✅ Registrar Pago
+          </button>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+};
+
+// 2. Preparar el modal de cobro para una venta específica
+window.prepararLiquidarPago = function(ventaId, cliente, montoEur) {
+  document.getElementById('liquidarVentaId').value = ventaId;
+  document.getElementById('liquidarClienteLabel').textContent = cliente;
+  document.getElementById('liquidarMontoLabel').textContent = `€${parseFloat(montoEur).toFixed(2)}`;
+  
+  window.openModal('modalLiquidarPago');
+};
+
+// 3. Confirmar y procesar la liquidación en Supabase
+window.procesarLiquidarPago = async function(e) {
+  e.preventDefault();
+
+  const ventaId = document.getElementById('liquidarVentaId').value;
+  const metodoPago = document.getElementById('liquidarMetodoPago').value;
+  const referencia = document.getElementById('liquidarReferencia').value;
+
+  const { error } = await supabase
+    .from('ventas_diarias')
+    .update({
+      estado_pago: 'Pagado',
+      metodo_pago: metodoPago,
+      referencia_pago: referencia,
+      fecha_pago: new Date().toISOString()
+    })
+    .eq('id', ventaId);
+
+  if (error) {
+    alert("Error al actualizar la cuenta: " + error.message);
+  } else {
+    alert("¡Pago registrado correctamente!");
+    window.closeModal('modalLiquidarPago');
+    window.cargarCuentasPendientes();
+    if (typeof cargarVentasDia === 'function') cargarVentasDia();
+  }
+};
+function construirMensajeWhatsApp(venta, tasa) {
+  const montoEur = parseFloat(venta.monto_eur || 0).toFixed(2);
+  const montoBs = (montoEur * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const servicioNombre = venta.servicios ? venta.servicios.nombre : 'Servicio de belleza';
+
+  const texto = `Hola ${venta.nombre_clienta} 👋✨ Esperamos que te encuentres muy bien.\n\nTe escribimos de *Olivetta* para recordarte el pago pendiente de tu servicio *${servicioNombre}* por un monto de *€${montoEur}* (equivalente a *${montoBs} Bs* a la tasa BCV del día).\n\nSi ya realizaste el pago, por favor compártenos el comprobante por este medio. ¡Muchas gracias! 💕`;
+
+  return encodeURIComponent(texto);
+}

@@ -73,6 +73,9 @@
       <button onclick="window.openModal('modalMensual')" class="bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-200 px-4 py-2 rounded-xl text-xs font-bold transition shadow-2xs">
         📊 Dashboard Mensual
       </button>
+	<button onclick="window.openModal('modalCuentasPendientes'); window.cargarCuentasPendientes();" class="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1">
+  	⏳ Cuentas por Cobrar
+	</button>
     </div>
 
     <!-- SECCIÓN PRINCIPAL DE MÉTRICAS Y TABLA -->
@@ -146,6 +149,13 @@
       </div>
 
       <form id="formVenta" class="space-y-3 text-xs">
+        
+        <!-- CAMPO 1: Fecha del Registro (Día Calendario) -->
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Fecha de Registro</label>
+          <input type="date" id="fechaVenta" required class="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900 text-slate-700">
+        </div>
+
         <div>
           <label class="block font-semibold text-slate-700 mb-1">Nombre de la Clienta</label>
           <input type="text" id="nombreClienta" required placeholder="Ej. Desiree Salazar" class="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900 text-slate-700">
@@ -160,8 +170,23 @@
           </div>
           <div>
             <label class="block font-semibold text-slate-700 mb-1">Especialista</label>
-            <select id="selectEspecialista" required class="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900 bg-white text-slate-700">
+            <select id="selectEspecialista" required onchange="window.alCambiarEspecialista()" class="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900 bg-white text-slate-700">
               <option value="">Cargando especialistas...</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- CAMPO 2: Porcentaje de Comisión Editable -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Porcentaje Comisión (%)</label>
+            <input type="number" step="0.1" id="porcentajeComision" required placeholder="Ej. 50" class="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900 text-slate-700 font-semibold bg-amber-50/50">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Estatus</label>
+            <select id="estadoPago" class="w-full border border-slate-300 rounded-lg p-2.5 outline-none bg-white text-slate-700">
+              <option value="Pagado">Pagado</option>
+              <option value="Por Cobrar">Por Cobrar (Pendiente)</option>
             </select>
           </div>
         </div>
@@ -194,18 +219,9 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Propina (€)</label>
-            <input type="number" step="0.01" id="propinaEur" value="0" class="w-full border border-slate-300 rounded-lg p-2.5 outline-none text-slate-700">
-          </div>
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Estatus</label>
-            <select id="estadoPago" class="w-full border border-slate-300 rounded-lg p-2.5 outline-none bg-white text-slate-700">
-              <option value="Pagado">Pagado</option>
-              <option value="Por Cobrar">Por Cobrar (Pendiente)</option>
-            </select>
-          </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Propina (€)</label>
+          <input type="number" step="0.01" id="propinaEur" value="0" class="w-full border border-slate-300 rounded-lg p-2.5 outline-none text-slate-700">
         </div>
 
         <div class="flex justify-end gap-2 mt-4 pt-3 border-t">
@@ -574,9 +590,71 @@
           Cerrar
         </button>
       </div>
-
     </div>
   </div>
+
+<!-- Modal Lista Cuentas por Cobrar -->
+<div id="modalCuentasPendientes" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl flex flex-col max-h-[85vh]">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-extrabold text-slate-800 text-base flex items-center gap-2">
+        ⏳ Cuentas por Cobrar
+      </h3>
+      <button onclick="window.closeModal('modalCuentasPendientes')" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
+    </div>
+
+    <!-- Lista con Scroll -->
+    <div id="listaCuentasPendientes" class="space-y-3 overflow-y-auto pr-1 flex-1">
+      <!-- Se llena dinámicamente con JS -->
+    </div>
+  </div>
+</div>
+<!-- Modal Confirmar/Registrar Pago -->
+<div id="modalLiquidarPago" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl">
+    <div class="flex justify-between items-center mb-3">
+      <h3 class="font-bold text-slate-800 text-sm">Completar Pago Pendiente</h3>
+      <button onclick="window.closeModal('modalLiquidarPago')" class="text-slate-400 hover:text-slate-600">✕</button>
+    </div>
+
+    <form onsubmit="window.procesarLiquidarPago(event)" class="space-y-3 text-xs">
+      <input type="hidden" id="liquidarVentaId" />
+
+      <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 flex justify-between items-center">
+        <div>
+          <p class="text-slate-500 text-[10px]">Cliente:</p>
+          <p id="liquidarClienteLabel" class="font-bold text-slate-800 capitalize">-</p>
+        </div>
+        <div class="text-right">
+          <p class="text-slate-500 text-[10px]">Monto a saldar:</p>
+          <p id="liquidarMontoLabel" class="font-black text-amber-700 text-sm">-</p>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-slate-600 font-semibold mb-1">Método con el que canceló:</label>
+        <select id="liquidarMetodoPago" required class="w-full border border-slate-200 rounded-lg p-2 outline-none focus:border-slate-900">
+          <option value="Pago Móvil">Pago Móvil</option>
+          <option value="Efectivo Eur">Efectivo (€)</option>
+          <option value="Efectivo Usd">Efectivo ($)</option>
+          <option value="Efectivo Bs">Efectivo (Bs)</option>
+          <option value="Punto de Venta">Punto de Venta</option>
+          <option value="Zelle">Zelle</option>
+          <option value="Binance">Binance</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-slate-600 font-semibold mb-1">Nº Referencia o Comprobante:</label>
+        <input type="text" id="liquidarReferencia" placeholder="Ej: 123456" class="w-full border border-slate-200 rounded-lg p-2 outline-none focus:border-slate-900" />
+      </div>
+
+      <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition mt-2">
+        Confirmar y Cambiar a "Pagado"
+      </button>
+    </form>
+  </div>
+</div>
 
   <!-- Script principal de la aplicación -->
   <script type="module" src="app.js"></script>
