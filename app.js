@@ -347,12 +347,15 @@ async function registrarVenta(e) {
   const servicioId = document.getElementById('selectServicio').value;
   const especialistaId = document.getElementById('selectEspecialista').value;
   const porcentajeComision = parseFloat(document.getElementById('porcentajeComision')?.value) || 0;
+  
+  // Monto del Spa (Euros) y Consumo Aparte (USD)
   const montoEur = parseFloat(document.getElementById('montoEur').value) || 0;
+  const montoOlivettaUsd = parseFloat(document.getElementById('montoOlivettaUsd')?.value) || 0;
+
   const metodoPago = document.getElementById('metodoPago').value;
   const referenciaPago = document.getElementById('referenciaPago').value;
   const propinaEur = parseFloat(document.getElementById('propinaEur').value) || 0;
   const estadoPago = document.getElementById('estadoPago').value;
-  const montoOlivettaUsd = parseFloat(document.getElementById('montoOlivettaUsd')?.value) || 0;
 
   const montoVes = montoEur * tasaActual;
 
@@ -369,7 +372,7 @@ async function registrarVenta(e) {
     referencia_pago: referenciaPago,
     propina_eur: propinaEur,
     estado_pago: estadoPago,
-    monto_olivetta_usd: montoOlivettaUsd
+    monto_olivetta_usd: montoOlivettaUsd // Queda registrado en su propia columna independiente
   };
 
   const { error } = await supabase.from('ventas_diarias').insert([nuevaVenta]);
