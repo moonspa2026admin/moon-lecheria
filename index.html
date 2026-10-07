@@ -150,17 +150,19 @@
 
       <form id="formVenta" class="space-y-3 text-xs">
         
-        <!-- CAMPO 1: Fecha del Registro (Día Calendario) -->
+        <!-- Fecha del Registro -->
         <div>
           <label class="block font-semibold text-slate-700 mb-1">Fecha de Registro</label>
           <input type="date" id="fechaVenta" required class="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900 text-slate-700">
         </div>
 
+        <!-- Cliente -->
         <div>
           <label class="block font-semibold text-slate-700 mb-1">Nombre de la Clienta</label>
           <input type="text" id="nombreClienta" required placeholder="Ej. Desiree Salazar" class="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900 text-slate-700">
         </div>
 
+        <!-- Servicio y Especialista -->
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block font-semibold text-slate-700 mb-1">Categoría / Servicio</label>
@@ -176,7 +178,7 @@
           </div>
         </div>
 
-        <!-- CAMPO 2: Porcentaje de Comisión Editable -->
+        <!-- Porcentaje Comisión y Estado -->
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block font-semibold text-slate-700 mb-1">Porcentaje Comisión (%)</label>
@@ -191,40 +193,61 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
+        <!-- Monto (€), Tasa Aplicada (Bs/€) y Total en Bs. -->
+        <div class="grid grid-cols-3 gap-2">
           <div>
-            <label class="block font-semibold text-slate-700 mb-1">Monto en Euros (€)</label>
-            <input type="number" step="0.01" id="montoEur" required placeholder="0.00" class="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900 text-slate-700">
+            <label class="block font-semibold text-slate-700 mb-1">Monto (€)</label>
+            <input type="number" step="0.01" id="montoEur" required placeholder="0.00" class="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900 text-slate-700 font-bold">
           </div>
           <div>
-            <label class="block font-semibold text-slate-700 mb-1">Monto en Bs. (Auto)</label>
+            <label class="block font-semibold text-slate-700 mb-1">Tasa (Bs/€)</label>
+            <input type="number" step="0.01" id="tasaAplicadaInput" required class="w-full border border-slate-300 bg-emerald-50/60 font-bold text-slate-800 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900" placeholder="0.00">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Total (Bs)</label>
             <input type="text" id="montoBvInput" disabled placeholder="0.00 Bs" class="w-full border border-slate-200 bg-slate-100 rounded-lg p-2.5 text-slate-500 font-medium">
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Método de Pago</label>
-            <select id="metodoPago" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-slate-800">
-              <option value="Cash">Cash (Efectivo €/$)</option>
-              <option value="Pago Móvil">Pago Móvil (Bs)</option>
-              <option value="Punto de Venta (PDV)">Punto de Venta (PDV)</option>
-              <option value="Zelle">Zelle</option>
-              <option value="Transferencia">Transferencia Bancaria</option>
-            </select>
+        <!-- Métodos de Pago Mixtos/Combinados -->
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 my-2 space-y-2">
+          <div class="flex justify-between items-center">
+            <label class="block font-bold text-slate-700 text-xs uppercase">💳 Forma de Pago (Mixto / Combinado)</label>
+            <span class="text-[10px] text-slate-400 font-medium">(Llena uno o varios montos)</span>
           </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <span class="text-[11px] text-slate-600 font-medium">Cash / Efectivo (€/$):</span>
+              <input type="number" step="0.01" id="montoCash" placeholder="0.00 €" class="w-full border rounded-lg p-2 text-xs bg-white">
+            </div>
+            <div>
+              <span class="text-[11px] text-slate-600 font-medium">Pago Móvil (Bs):</span>
+              <input type="number" step="0.01" id="montoPagoMovil" placeholder="0.00 €" class="w-full border rounded-lg p-2 text-xs bg-white">
+            </div>
+            <div>
+              <span class="text-[11px] text-slate-600 font-medium">Punto de Venta (PDV):</span>
+              <input type="number" step="0.01" id="montoPdv" placeholder="0.00 €" class="w-full border rounded-lg p-2 text-xs bg-white">
+            </div>
+            <div>
+              <span class="text-[11px] text-slate-600 font-medium">Zelle / Transferencia:</span>
+              <input type="number" step="0.01" id="montoZelle" placeholder="0.00 €" class="w-full border rounded-lg p-2 text-xs bg-white">
+            </div>
+          </div>
+
           <div>
-            <label class="block font-semibold text-slate-700 mb-1">Referencia / Observación</label>
-            <input type="text" id="referenciaPago" placeholder="N° Ref. o Nota" class="w-full border border-slate-300 rounded-lg p-2.5 outline-none text-slate-700">
+            <label class="block font-semibold text-slate-700 mb-1 mt-1">Referencia / Observación</label>
+            <input type="text" id="referenciaPago" placeholder="N° Ref. o Nota" class="w-full border border-slate-300 rounded-lg p-2 outline-none text-slate-700 bg-white">
           </div>
         </div>
 
+        <!-- Propina -->
         <div>
           <label class="block font-semibold text-slate-700 mb-1">Propina (€)</label>
           <input type="number" step="0.01" id="propinaEur" value="0" class="w-full border border-slate-300 rounded-lg p-2.5 outline-none text-slate-700">
         </div>
 
-        <!-- Campo Específico: Consumo Olivetta (USD) -->
+        <!-- Consumo Olivetta USD -->
         <div class="bg-amber-50/60 border border-amber-200/80 rounded-xl p-3 my-2">
           <div class="flex justify-between items-center mb-1">
             <label class="block font-bold text-amber-900 text-xs uppercase flex items-center gap-1">
@@ -232,13 +255,7 @@
             </label>
             <span class="text-[10px] text-amber-700 font-semibold">(Pago a rendir a Olivetta)</span>
           </div>
-          <input 
-            type="number" 
-            step="0.01" 
-            id="montoOlivettaUsd" 
-            placeholder="0.00 $" 
-            class="w-full bg-white border border-amber-300 rounded-lg p-2 font-extrabold text-amber-900 outline-none focus:ring-2 focus:ring-amber-500 text-xs"
-          />
+          <input type="number" step="0.01" id="montoOlivettaUsd" placeholder="0.00 $" class="w-full bg-white border border-amber-300 rounded-lg p-2 font-extrabold text-amber-900 outline-none focus:ring-2 focus:ring-amber-500 text-xs">
         </div>
 
         <div class="flex justify-end gap-2 mt-4 pt-3 border-t">

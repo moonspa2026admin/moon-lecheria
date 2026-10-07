@@ -324,19 +324,45 @@ function autocompletarPrecioServicio(e) {
   }
 }
 
-// 3. CALCULAR BOLÍVARES AUTOMÁTICAMENTE
+// A. Abrir modal y precargar la tasa del día en el input editable
+window.abrirModalVenta = function() {
+  window.openModal('modalVenta');
+  cargarSelects();
+
+  // Fecha del día por defecto
+  const fechaInput = document.getElementById('fechaVenta');
+  if (fechaInput && !fechaInput.value) {
+    const hoy = new Date().toISOString().split('T')[0];
+    fechaInput.value = hoy;
+  }
+
+  // Precargar tasa oficial actual en la casilla de tasa editable
+  const inputTasa = document.getElementById('tasaAplicadaInput');
+  if (inputTasa && tasaActual > 0) {
+    inputTasa.value = tasaActual;
+  }
+
+  // Listener para recalcular Bolívares si cambia la Tasa o el Monto
+  inputTasa?.addEventListener('input', calcularBolivares);
+};
+
+// B. Recalcular Bolívares usando la tasa editable seleccionada/ingresada
 function calcularBolivares() {
   const montoEurInput = document.getElementById('montoEur');
-  if (!montoEurInput) return;
+  const tasaInput = document.getElementById('tasaAplicadaInput');
+  if (!montoEurInput || !tasaInput) return;
+
   const montoEur = parseFloat(montoEurInput.value) || 0;
-  const montoBs = montoEur * tasaActual;
-  const montoInput = document.getElementById('montoBvInput');
-  if (montoInput) {
-    montoInput.value = montoBs > 0 ? `${montoBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs` : '0.00 Bs';
+  const tasaUso = parseFloat(tasaInput.value) || tasaActual || 0;
+  const montoBs = montoEur * tasaUso;
+
+  const montoBvInput = document.getElementById('montoBvInput');
+  if (montoBvInput) {
+    montoBvInput.value = montoBs > 0 ? `${montoBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs` : '0.00 Bs';
   }
 }
 
-// 4. REGISTRAR VENTA
+// C. Registrar Venta con Tasa Editable y Métodos Mixtos
 async function registrarVenta(e) {
   e.preventDefault();
 
@@ -348,16 +374,30 @@ async function registrarVenta(e) {
   const especialistaId = document.getElementById('selectEspecialista').value;
   const porcentajeComision = parseFloat(document.getElementById('porcentajeComision')?.value) || 0;
   
-  // Monto del Spa (Euros) y Consumo Aparte (USD)
+  // Montos y Tasa Editable
   const montoEur = parseFloat(document.getElementById('montoEur').value) || 0;
-  const montoOlivettaUsd = parseFloat(document.getElementById('montoOlivettaUsd')?.value) || 0;
+  const tasaAplicada = parseFloat(document.getElementById('tasaAplicadaInput')?.value) || tasaActual || 0;
+  const montoVes = montoEur * tasaAplicada;
 
-  const metodoPago = document.getElementById('metodoPago').value;
+  // Desglose de Pago Mixto
+  const cash = parseFloat(document.getElementById('montoCash')?.value) || 0;
+  const pm = parseFloat(document.getElementById('montoPagoMovil')?.value) || 0;
+  const pdv = parseFloat(document.getElementById('montoPdv')?.value) || 0;
+  const zelle = parseFloat(document.getElementById('montoZelle')?.value) || 0;
+
+  // Construir resumen textual para metodo_pago
+  const desgloseMetodos = [];
+  if (cash > 0) desgloseMetodos.push(`Cash (€${cash})`);
+  if (pm > 0) desgloseMetodos.push(`Pago Móvil (€${pm})`);
+  if (pdv > 0) desgloseMetodos.push(`PDV (€${pdv})`);
+  if (zelle > 0) desgloseMetodos.push(`Zelle (€${zelle})`);
+
+  const metodoPagoFinal = desgloseMetodos.length > 0 ? desgloseMetodos.join(' + ') : 'Efectivo';
+
   const referenciaPago = document.getElementById('referenciaPago').value;
   const propinaEur = parseFloat(document.getElementById('propinaEur').value) || 0;
   const estadoPago = document.getElementById('estadoPago').value;
-
-  const montoVes = montoEur * tasaActual;
+  const montoOlivettaUsd = parseFloat(document.getElementById('montoOlivettaUsd')?.value) || 0;
 
   const nuevaVenta = {
     fecha: fechaSeleccionada,
@@ -366,13 +406,13 @@ async function registrarVenta(e) {
     especialista_id: especialistaId,
     porcentaje_comision: porcentajeComision,
     monto_eur: montoEur,
-    tasa_aplicada: tasaActual,
+    tasa_aplicada: tasaAplicada, // Se guarda la tasa específica ingresada
     monto_ves: montoVes,
-    metodo_pago: metodoPago,
+    metodo_pago: metodoPagoFinal,
     referencia_pago: referenciaPago,
     propina_eur: propinaEur,
     estado_pago: estadoPago,
-    monto_olivetta_usd: montoOlivettaUsd // Queda registrado en su propia columna independiente
+    monto_olivetta_usd: montoOlivettaUsd
   };
 
   const { error } = await supabase.from('ventas_diarias').insert([nuevaVenta]);
@@ -666,18 +706,6 @@ window.openModal = function(modalId) {
 window.closeModal = function(modalId) {
   const modal = document.getElementById(modalId);
   if (modal) modal.classList.add('hidden');
-};
-
-window.abrirModalVenta = function() {
-  window.openModal('modalVenta');
-  cargarSelects();
-
-  // Asigna la fecha actual por defecto si no se ha elegido ninguna
-  const fechaInput = document.getElementById('fechaVenta');
-  if (fechaInput && !fechaInput.value) {
-    const hoy = new Date().toISOString().split('T')[0];
-    fechaInput.value = hoy;
-  }
 };
 
 window.cerrarModalVenta = function() {
@@ -1164,7 +1192,7 @@ function construirMensajeWhatsApp(venta, tasa) {
   const montoBs = (montoEur * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const servicioNombre = venta.servicios ? venta.servicios.nombre : 'Servicio de belleza';
 
-  const texto = `Hola ${venta.nombre_clienta} 👋✨ Esperamos que te encuentres muy bien.\n\nTe escribimos de *Olivetta* para recordarte el pago pendiente de tu servicio *${servicioNombre}* por un monto de *€${montoEur}* (equivalente a *${montoBs} Bs* a la tasa BCV del día).\n\nSi ya realizaste el pago, por favor compártenos el comprobante por este medio. ¡Muchas gracias! 💕`;
+  const texto = `Hola ${venta.nombre_clienta} 👋✨ Esperamos que te encuentres muy bien.\n\nTe escribimos de *Moon Spa Lecheria* para recordarte el pago pendiente de tu servicio *${servicioNombre}* por un monto de *€${montoEur}* (equivalente a *${montoBs} Bs* a la tasa BCV del día).\n\nSi ya realizaste el pago, por favor compártenos el comprobante por este medio. ¡Muchas gracias! 💕`;
 
   return encodeURIComponent(texto);
 }
