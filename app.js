@@ -105,220 +105,6 @@ window.registrarGasto = async function(e) {
   }
 };
 
-// 7. CIERRE SEMANAL DINÁMICO (SÁBADO A VIERNES)
-window.renderCierreSemanal = async function() {
-  const tbody = document.getElementById('tablaNominaSemanal');
-  const elIngresosArea = document.getElementById('ingresosPorAreaContainer');
-  const elDistribucionPago = document.getElementById('distribucionPagosContainer');
-  const elBalanceSemanal = document.getElementById('balanceNetoSemanalVal');
-  const elCuentasPendientes = document.getElementById('cuentasPendientesSemanalVal');
-  const elRangoSemana = document.getElementById('rangoSemanaLabel');
-
-  if (!tbody) return;
-
-  const fechaFiltroVal = document.getElementById('filtroFechaSemanal')?.value;
-  const fechaBase = fechaFiltroVal ? new Date(fechaFiltroVal + 'T00:00:00') : new Date();
-
-  // LÓGICA DE SÁBADO A VIERNES:
-  // getDay(): Dom=0, Lun=1, Mar=2, Mié=3, Jue=4, Vie=5, Sáb=6
-  const day = fechaBase.getDay();
-  
-  // Calcular distancia al Sábado anterior o actual
-  const offsetSabado = (day === 6) ? 0 : (day + 1);
-  
-  const sabadoInicio = new Date(fechaBase);
-  sabadoInicio.setDate(sabadoInicio.getDate() - offsetSabado);
-  sabadoInicio.setHours(0,0,0,0);
-
-  const viernesFin = new Date(sabadoInicio);
-  viernesFin.setDate(viernesFin.getDate() + 6);
-  viernesFin.setHours(23,59,59,999);
-
-  const domingoPago = new Date(sabadoInicio);
-  domingoPago.setDate(domingoPago.getDate() + 8); // Domingo siguiente al corte
-
-  if (elRangoSemana) {
-    const f1 = sabadoInicio.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
-    const f2 = viernesFin.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const fPago = domingoPago.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
-    elRangoSemana.textContent = `Ciclo: Sáb ${f1} al Vie ${f2} | 🗓️ Pago Nómina: Dom ${fPago}`;
-  }
-
-  // Consulta en Supabase en el rango Sábado - Viernes
-  const { data: ventasSemana } = await supabase
-    .from('ventas_diarias')
-    .select(`*, servicios(nombre, categoria), especialistas(nombre, porcentaje_comision)`)
-    .gte('fecha', sabadoInicio.toISOString())
-    .lte('fecha', viernesFin.toISOString());
-
-  const { data: gastosSemana } = await supabase
-    .from('gastos_operativos')
-    .select('*')
-    .gte('fecha', sabadoInicio.toISOString())
-    .lte('fecha', viernesFin.toISOString());
-
-  const ventas = ventasSemana || [];
-  const gastos = gastosSemana || [];
-  const especialistas = window.especialistas || [];
-
-  let htmlTabla = '';
-  let totalComisionesYPropinasSemana = 0;
-
-  especialistas.forEach(esp => {
-    const ventasEsp = ventas.filter(v => (v.especialistas ? v.especialistas.nombre : '') === esp.nombre);
-    
-    const totalVendidoEur = ventasEsp.reduce((acc, v) => acc + (parseFloat(v.monto_eur) || 0), 0);
-    const totalPropinasEur = ventasEsp.reduce((acc, v) => acc + (parseFloat(v.propina_eur) || 0), 0);
-    
-    const pctComision = parseFloat(esp.porcentaje_comision) || 40;
-    const totalComisionEur = (totalVendidoEur * pctComision) / 100;
-    const totalCobroEsp = totalComisionEur + totalPropinasEur;
-    const totalBs = totalCobroEsp * (tasaActual || 1);
-
-    totalComisionesYPropinasSemana += totalCobroEsp;
-
-    htmlTabla += `
-      <tr class="border-b text-xs">
-        <td class="p-2 font-bold text-left capitalize">${esp.nombre}</td>
-        <td class="p-2" colspan="2">${ventasEsp.length} servicio(s)</td>
-        <td class="p-2 text-amber-600 font-medium">+${totalPropinasEur.toFixed(2)} €</td>
-        <td class="p-2 font-bold bg-amber-50">€${totalCobroEsp.toFixed(2)}</td>
-        <td class="p-2 font-semibold bg-blue-50">${totalBs.toLocaleString('es-VE', {minimumFractionDigits: 2})} Bs</td>
-      </tr>
-    `;
-  });
-
-  tbody.innerHTML = htmlTabla || `<tr><td colspan="6" class="p-4 text-center text-slate-400">Sin datos en este ciclo semanal.</td></tr>`;
-
-  // Cálculos de resumen (Área, Métodos de Pago, Balance y Olivetta)
-  const ingresosPorCategoria = {};
-  let totalVentasSemanaEur = 0;
-  let cuentasPendientes = 0;
-
-  ventas.forEach(v => {
-    const cat = (v.servicios && v.servicios.categoria) ? v.servicios.categoria : 'General';
-    const monto = parseFloat(v.monto_eur) || 0;
-    ingresosPorCategoria[cat] = (ingresosPorCategoria[cat] || 0) + monto;
-    totalVentasSemanaEur += monto;
-
-    if (v.estado_pago === 'Por Cobrar') {
-      cuentasPendientes += monto;
-    }
-  });
-
-  if (elIngresosArea) {
-    elIngresosArea.innerHTML = Object.entries(ingresosPorCategoria).map(([cat, monto]) => `
-      <div class="flex justify-between text-xs font-semibold text-slate-700 py-1">
-        <span>${cat}:</span>
-        <span>€${monto.toFixed(2)}</span>
-      </div>
-    `).join('') || '<p class="text-xs text-slate-400">Sin registros</p>';
-  }
-
-  const distribucionPagos = {};
-
-  ventas.forEach(v => {
-    const metodo = v.metodo_pago || 'Otros';
-    const montoEur = parseFloat(v.monto_eur) || 0;
-    const montoBs = parseFloat(v.monto_ves) || 0;
-
-    if (!distribucionPagos[metodo]) {
-      distribucionPagos[metodo] = { eur: 0, bs: 0 };
-    }
-    distribucionPagos[metodo].eur += montoEur;
-    distribucionPagos[metodo].bs += montoBs;
-  });
-
-  if (elDistribucionPago) {
-    elDistribucionPago.innerHTML = Object.entries(distribucionPagos).map(([metodo, totales]) => {
-      const esMonedaNacional = metodo.includes('Pago Móvil') || metodo.includes('Punto de Venta') || metodo.includes('PDV');
-      const valorMostrar = esMonedaNacional 
-        ? `${totales.bs.toLocaleString('es-VE', {minimumFractionDigits: 2})} Bs` 
-        : `€${totales.eur.toFixed(2)}`;
-
-      return `
-        <div class="flex justify-between text-xs font-semibold text-slate-700 py-1 border-b border-slate-100 last:border-b-0">
-          <span>💳 ${metodo}:</span>
-          <span class="font-bold">${valorMostrar}</span>
-        </div>
-      `;
-    }).join('') || '<p class="text-xs text-slate-400">Sin transacciones registradas</p>';
-  }
-
-  const totalGastosSemanaEur = gastos.reduce((acc, g) => acc + (parseFloat(g.monto_eur) || 0), 0);
-  const balanceNeto = totalVentasSemanaEur - totalComisionesYPropinasSemana - totalGastosSemanaEur;
-
-  if (elBalanceSemanal) elBalanceSemanal.textContent = `€${balanceNeto.toFixed(2)}`;
-  if (elCuentasPendientes) elCuentasPendientes.textContent = `Cuentas por Cobrar Pendientes: €${cuentasPendientes.toFixed(2)}`;
-
-  const totalOlivettaSemanaUsd = ventas.reduce((acc, v) => acc + (parseFloat(v.monto_olivetta_usd) || 0), 0);
-  const elOlivettaContainer = document.getElementById('totalOlivettaSemanalVal');
-  if (elOlivettaContainer) {
-    elOlivettaContainer.textContent = `$${totalOlivettaSemanaUsd.toFixed(2)} USD`;
-  }
-};
-// 8. CIERRE MENSUAL DINÁMICO POR MES SELECCIONADO
-window.renderCierreMensual = async function() {
-  const elIngresosTotales = document.getElementById('mensualIngresosTotales');
-  const elNominaComisiones = document.getElementById('mensualNominaComisiones');
-  const elGastosOperativos = document.getElementById('mensualGastosOperativos');
-  const elGananciaNeta = document.getElementById('mensualGananciaNeta');
-  const elMesLabel = document.getElementById('mesSeleccionadoLabel');
-
-  const mesFiltroVal = document.getElementById('filtroMesMensual')?.value; // Formato "YYYY-MM"
-  let fechaInicio, fechaFin;
-
-  if (mesFiltroVal) {
-    const [year, month] = mesFiltroVal.split('-');
-    fechaInicio = new Date(year, month - 1, 1).toISOString();
-    fechaFin = new Date(year, month, 0, 23, 59, 59, 999).toISOString();
-
-    if (elMesLabel) {
-      const nomMes = new Date(year, month - 1, 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-      elMesLabel.textContent = `Resumen consolidado para ${nomMes}`;
-    }
-  } else {
-    const ahora = new Date();
-    fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString();
-    fechaFin = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0, 23, 59, 59, 999).toISOString();
-  }
-
-  const { data: ventasMes } = await supabase
-    .from('ventas_diarias')
-    .select(`*, especialistas(porcentaje_comision)`)
-    .gte('fecha', fechaInicio)
-    .lte('fecha', fechaFin);
-
-  const { data: gastosMes } = await supabase
-    .from('gastos_operativos')
-    .select('*')
-    .gte('fecha', fechaInicio)
-    .lte('fecha', fechaFin);
-
-  const ventas = ventasMes || [];
-  const gastos = gastosMes || [];
-
-  let ingresosTotales = 0;
-  let nominaComisionesTotales = 0;
-
-  ventas.forEach(v => {
-    const monto = parseFloat(v.monto_eur) || 0;
-    const propina = parseFloat(v.propina_eur) || 0;
-    const pctComision = v.especialistas ? parseFloat(v.especialistas.porcentaje_comision) : 40;
-
-    ingresosTotales += monto;
-    nominaComisionesTotales += ((monto * pctComision) / 100) + propina;
-  });
-
-  const gastosTotales = gastos.reduce((acc, g) => acc + (parseFloat(g.monto_eur) || 0), 0);
-  const gananciaNeta = ingresosTotales - nominaComisionesTotales - gastosTotales;
-
-  if (elIngresosTotales) elIngresosTotales.textContent = `€${ingresosTotales.toFixed(2)}`;
-  if (elNominaComisiones) elNominaComisiones.textContent = `€${nominaComisionesTotales.toFixed(2)}`;
-  if (elGastosOperativos) elGastosOperativos.textContent = `€${gastosTotales.toFixed(2)}`;
-  if (elGananciaNeta) elGananciaNeta.textContent = `€${gananciaNeta.toFixed(2)}`;
-};
-
 // 2. CARGAR SELECTS
 async function cargarSelects() {
   const { data: servs, error: errServ } = await supabase.from('servicios').select('*');
@@ -641,12 +427,14 @@ window.verDetalleEspecialista = function(nombreEspecialista) {
   window.openModal('modalDetalleEspecialista');
 };
 
-// 7. CIERRE DIARIO DINÁMICO SEGÚN FECHA SELECCIONADA
+// 7. CIERRE DIARIO (DETERMINANDO MONTO NETO MOON)
 window.renderCierreDiario = async function() {
   const tbody = document.getElementById('tablaServiciosDiarios');
   const listaComisiones = document.getElementById('listaComisiones');
   const elFechaDiario = document.getElementById('fechaDiario');
-  const elTotalRecaudado = document.getElementById('cierreTotalRecaudado');
+  const elTotalBruto = document.getElementById('cierreTotalBruto');
+  const elTotalOlivetta = document.getElementById('cierreTotalOlivetta');
+  const elTotalRecaudado = document.getElementById('cierreTotalRecaudado'); // Neto Moon
   const elCierreCaja = document.getElementById('cierreCajaFinal');
   
   if (!tbody) return;
@@ -659,7 +447,6 @@ window.renderCierreDiario = async function() {
     elFechaDiario.textContent = `Resumen al ${fechaObj.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
   }
 
-  // Traer desde Supabase las ventas exactas de esa fecha seleccionada
   const inicioDia = `${fechaIsoStr}T00:00:00`;
   const finDia = `${fechaIsoStr}T23:59:59`;
 
@@ -678,12 +465,15 @@ window.renderCierreDiario = async function() {
   if (ventasHoy.length === 0) {
     tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">No hay ventas registradas en esta fecha.</td></tr>`;
     if (listaComisiones) listaComisiones.innerHTML = '<li class="text-slate-400">• Sin comisiones ni propinas en esta fecha</li>';
+    if (elTotalBruto) elTotalBruto.textContent = '0.00 €';
+    if (elTotalOlivetta) elTotalOlivetta.textContent = '0.00 $';
     if (elTotalRecaudado) elTotalRecaudado.textContent = '0.00 €';
     if (elCierreCaja) elCierreCaja.textContent = '0.00 €';
     return;
   }
 
-  let totalRecaudadoDia = 0;
+  let totalBrutoDiaEur = 0;
+  let totalOlivettaDiaUsd = 0;
   let totalComisionesYPropinasPagar = 0;
 
   tbody.innerHTML = ventasHoy.map((v, index) => {
@@ -692,8 +482,10 @@ window.renderCierreDiario = async function() {
     const espNombre = v.especialistas ? v.especialistas.nombre : 'Sin Asignar';
     const montoEur = parseFloat(v.monto_eur) || 0;
     const montoBs = parseFloat(v.monto_ves) || 0;
+    const olivettaUsd = parseFloat(v.monto_olivetta_usd) || 0;
 
-    totalRecaudadoDia += montoEur;
+    totalBrutoDiaEur += montoEur;
+    totalOlivettaDiaUsd += olivettaUsd;
 
     return `
       <tr class="border-b hover:bg-slate-50 text-xs">
@@ -701,7 +493,11 @@ window.renderCierreDiario = async function() {
         <td class="p-2 font-medium capitalize">${v.nombre_clienta || 'S/N'}</td>
         <td class="p-2">${servicioNombre}</td>
         <td class="p-2 font-semibold">${espNombre}</td>
-        <td class="p-2 font-semibold">${montoEur.toFixed(2)} € ${propina > 0 ? `<span class="text-emerald-600 text-[10px] block">(+${propina.toFixed(2)}€ propina)</span>` : ''}</td>
+        <td class="p-2 font-semibold">
+          ${montoEur.toFixed(2)} € 
+          ${propina > 0 ? `<span class="text-emerald-600 text-[10px] block">(+${propina.toFixed(2)}€ propina)</span>` : ''}
+          ${olivettaUsd > 0 ? `<span class="text-amber-600 text-[10px] block">(🍹 $${olivettaUsd.toFixed(2)} Olivetta)</span>` : ''}
+        </td>
         <td class="p-2 text-xs">${v.metodo_pago || '-'} ${montoBs ? `(${montoBs.toLocaleString('es-VE', {minimumFractionDigits:2})} Bs)` : ''}</td>
         <td class="p-2 text-xs text-slate-500">${v.referencia_pago || '-'}</td>
       </tr>
@@ -743,13 +539,236 @@ window.renderCierreDiario = async function() {
     listaComisiones.innerHTML = htmlComisiones;
   }
 
-  const saldoNetoCaja = totalRecaudadoDia - totalComisionesYPropinasPagar;
+  // Cálculo Neto Moon (Servicios Spa limpios de Olivetta)
+  const totalNetoMoonEur = totalBrutoDiaEur - totalOlivettaDiaUsd;
+  const saldoNetoCaja = totalNetoMoonEur - totalComisionesYPropinasPagar;
 
-  if (elTotalRecaudado) elTotalRecaudado.textContent = `${totalRecaudadoDia.toFixed(2)} €`;
+  if (elTotalBruto) elTotalBruto.textContent = `${totalBrutoDiaEur.toFixed(2)} €`;
+  if (elTotalOlivetta) elTotalOlivetta.textContent = `$${totalOlivettaDiaUsd.toFixed(2)} USD`;
+  if (elTotalRecaudado) elTotalRecaudado.textContent = `${totalNetoMoonEur.toFixed(2)} €`;
   if (elCierreCaja) elCierreCaja.textContent = `${saldoNetoCaja.toFixed(2)} €`;
 };
 
-// 8. GESTIÓN DE MODALES
+// 8. CIERRE SEMANAL DINÁMICO (SÁBADO A VIERNES)
+window.renderCierreSemanal = async function() {
+  const tbody = document.getElementById('tablaNominaSemanal');
+  const elIngresosArea = document.getElementById('ingresosPorAreaContainer');
+  const elDistribucionPago = document.getElementById('distribucionPagosContainer');
+  const elBalanceSemanal = document.getElementById('balanceNetoSemanalVal');
+  const elCuentasPendientes = document.getElementById('cuentasPendientesSemanalVal');
+  const elRangoSemana = document.getElementById('rangoSemanaLabel');
+
+  if (!tbody) return;
+
+  const fechaFiltroVal = document.getElementById('filtroFechaSemanal')?.value;
+  const fechaBase = fechaFiltroVal ? new Date(fechaFiltroVal + 'T00:00:00') : new Date();
+
+  const day = fechaBase.getDay();
+  const offsetSabado = (day === 6) ? 0 : (day + 1);
+  
+  const sabadoInicio = new Date(fechaBase);
+  sabadoInicio.setDate(sabadoInicio.getDate() - offsetSabado);
+  sabadoInicio.setHours(0,0,0,0);
+
+  const viernesFin = new Date(sabadoInicio);
+  viernesFin.setDate(viernesFin.getDate() + 6);
+  viernesFin.setHours(23,59,59,999);
+
+  const domingoPago = new Date(sabadoInicio);
+  domingoPago.setDate(domingoPago.getDate() + 8);
+
+  if (elRangoSemana) {
+    const f1 = sabadoInicio.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+    const f2 = viernesFin.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const fPago = domingoPago.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+    elRangoSemana.textContent = `Ciclo: Sáb ${f1} al Vie ${f2} | 🗓️ Pago Nómina: Dom ${fPago}`;
+  }
+
+  const { data: ventasSemana } = await supabase
+    .from('ventas_diarias')
+    .select(`*, servicios(nombre, categoria), especialistas(nombre, porcentaje_comision)`)
+    .gte('fecha', sabadoInicio.toISOString())
+    .lte('fecha', viernesFin.toISOString());
+
+  const { data: gastosSemana } = await supabase
+    .from('gastos_operativos')
+    .select('*')
+    .gte('fecha', sabadoInicio.toISOString())
+    .lte('fecha', viernesFin.toISOString());
+
+  const ventas = ventasSemana || [];
+  const gastos = gastosSemana || [];
+  const especialistas = window.especialistas || [];
+
+  let htmlTabla = '';
+  let totalComisionesYPropinasSemana = 0;
+
+  especialistas.forEach(esp => {
+    const ventasEsp = ventas.filter(v => (v.especialistas ? v.especialistas.nombre : '') === esp.nombre);
+    
+    const totalVendidoEur = ventasEsp.reduce((acc, v) => acc + (parseFloat(v.monto_eur) || 0), 0);
+    const totalPropinasEur = ventasEsp.reduce((acc, v) => acc + (parseFloat(v.propina_eur) || 0), 0);
+    
+    const pctComision = parseFloat(esp.porcentaje_comision) || 40;
+    const totalComisionEur = (totalVendidoEur * pctComision) / 100;
+    const totalCobroEsp = totalComisionEur + totalPropinasEur;
+    const totalBs = totalCobroEsp * (tasaActual || 1);
+
+    totalComisionesYPropinasSemana += totalCobroEsp;
+
+    htmlTabla += `
+      <tr class="border-b text-xs">
+        <td class="p-2 font-bold text-left capitalize">${esp.nombre}</td>
+        <td class="p-2" colspan="2">${ventasEsp.length} servicio(s)</td>
+        <td class="p-2 text-amber-600 font-medium">+${totalPropinasEur.toFixed(2)} €</td>
+        <td class="p-2 font-bold bg-amber-50">€${totalCobroEsp.toFixed(2)}</td>
+        <td class="p-2 font-semibold bg-blue-50">${totalBs.toLocaleString('es-VE', {minimumFractionDigits: 2})} Bs</td>
+      </tr>
+    `;
+  });
+
+  tbody.innerHTML = htmlTabla || `<tr><td colspan="6" class="p-4 text-center text-slate-400">Sin datos en este ciclo semanal.</td></tr>`;
+
+  const ingresosPorCategoria = {};
+  let totalVentasSemanaEur = 0;
+  let cuentasPendientes = 0;
+
+  ventas.forEach(v => {
+    const cat = (v.servicios && v.servicios.categoria) ? v.servicios.categoria : 'General';
+    const monto = parseFloat(v.monto_eur) || 0;
+    ingresosPorCategoria[cat] = (ingresosPorCategoria[cat] || 0) + monto;
+    totalVentasSemanaEur += monto;
+
+    if (v.estado_pago === 'Por Cobrar') {
+      cuentasPendientes += monto;
+    }
+  });
+
+  if (elIngresosArea) {
+    elIngresosArea.innerHTML = Object.entries(ingresosPorCategoria).map(([cat, monto]) => `
+      <div class="flex justify-between text-xs font-semibold text-slate-700 py-1">
+        <span>${cat}:</span>
+        <span>€${monto.toFixed(2)}</span>
+      </div>
+    `).join('') || '<p class="text-xs text-slate-400">Sin registros</p>';
+  }
+
+  const distribucionPagos = {};
+
+  ventas.forEach(v => {
+    const metodo = v.metodo_pago || 'Otros';
+    const montoEur = parseFloat(v.monto_eur) || 0;
+    const montoBs = parseFloat(v.monto_ves) || 0;
+
+    if (!distribucionPagos[metodo]) {
+      distribucionPagos[metodo] = { eur: 0, bs: 0 };
+    }
+    distribucionPagos[metodo].eur += montoEur;
+    distribucionPagos[metodo].bs += montoBs;
+  });
+
+  if (elDistribucionPago) {
+    elDistribucionPago.innerHTML = Object.entries(distribucionPagos).map(([metodo, totales]) => {
+      const esMonedaNacional = metodo.includes('Pago Móvil') || metodo.includes('Punto de Venta') || metodo.includes('PDV');
+      const valorMostrar = esMonedaNacional 
+        ? `${totales.bs.toLocaleString('es-VE', {minimumFractionDigits: 2})} Bs` 
+        : `€${totales.eur.toFixed(2)}`;
+
+      return `
+        <div class="flex justify-between text-xs font-semibold text-slate-700 py-1 border-b border-slate-100 last:border-b-0">
+          <span>💳 ${metodo}:</span>
+          <span class="font-bold">${valorMostrar}</span>
+        </div>
+      `;
+    }).join('') || '<p class="text-xs text-slate-400">Sin transacciones registradas</p>';
+  }
+
+  const totalGastosSemanaEur = gastos.reduce((acc, g) => acc + (parseFloat(g.monto_eur) || 0), 0);
+  const balanceNeto = totalVentasSemanaEur - totalComisionesYPropinasSemana - totalGastosSemanaEur;
+
+  if (elBalanceSemanal) elBalanceSemanal.textContent = `€${balanceNeto.toFixed(2)}`;
+  if (elCuentasPendientes) elCuentasPendientes.textContent = `Cuentas por Cobrar Pendientes: €${cuentasPendientes.toFixed(2)}`;
+
+  const totalOlivettaSemanaUsd = ventas.reduce((acc, v) => acc + (parseFloat(v.monto_olivetta_usd) || 0), 0);
+  const elOlivettaContainer = document.getElementById('totalOlivettaSemanalVal');
+  if (elOlivettaContainer) {
+    elOlivettaContainer.textContent = `$${totalOlivettaSemanaUsd.toFixed(2)} USD`;
+  }
+};
+
+// 9. DASHBOARD MENSUAL (DETERMINANDO MONTO NETO MOON)
+window.renderCierreMensual = async function() {
+  const elIngresosTotales = document.getElementById('mensualIngresosTotales');
+  const elOlivettaTotales = document.getElementById('mensualOlivettaTotales');
+  const elNetoMoon = document.getElementById('mensualNetoMoon');
+  const elNominaComisiones = document.getElementById('mensualNominaComisiones');
+  const elGastosOperativos = document.getElementById('mensualGastosOperativos');
+  const elGananciaNeta = document.getElementById('mensualGananciaNeta');
+  const elMesLabel = document.getElementById('mesSeleccionadoLabel');
+
+  const mesFiltroVal = document.getElementById('filtroMesMensual')?.value;
+  let fechaInicio, fechaFin;
+
+  if (mesFiltroVal) {
+    const [year, month] = mesFiltroVal.split('-');
+    fechaInicio = new Date(year, month - 1, 1).toISOString();
+    fechaFin = new Date(year, month, 0, 23, 59, 59, 999).toISOString();
+
+    if (elMesLabel) {
+      const nomMes = new Date(year, month - 1, 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+      elMesLabel.textContent = `Resumen consolidado para ${nomMes}`;
+    }
+  } else {
+    const ahora = new Date();
+    fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString();
+    fechaFin = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0, 23, 59, 59, 999).toISOString();
+  }
+
+  const { data: ventasMes } = await supabase
+    .from('ventas_diarias')
+    .select(`*, especialistas(porcentaje_comision)`)
+    .gte('fecha', fechaInicio)
+    .lte('fecha', fechaFin);
+
+  const { data: gastosMes } = await supabase
+    .from('gastos_operativos')
+    .select('*')
+    .gte('fecha', fechaInicio)
+    .lte('fecha', fechaFin);
+
+  const ventas = ventasMes || [];
+  const gastos = gastosMes || [];
+
+  let ingresosBrutosEur = 0;
+  let totalOlivettaUsd = 0;
+  let nominaComisionesTotales = 0;
+
+  ventas.forEach(v => {
+    const monto = parseFloat(v.monto_eur) || 0;
+    const propina = parseFloat(v.propina_eur) || 0;
+    const olivetta = parseFloat(v.monto_olivetta_usd) || 0;
+    const pctComision = v.especialistas ? parseFloat(v.especialistas.porcentaje_comision) : 40;
+
+    ingresosBrutosEur += monto;
+    totalOlivettaUsd += olivetta;
+    nominaComisionesTotales += ((monto * pctComision) / 100) + propina;
+  });
+
+  const gastosTotales = gastos.reduce((acc, g) => acc + (parseFloat(g.monto_eur) || 0), 0);
+  
+  // Cálculo de Neto Moon Spa
+  const montoNetoMoon = ingresosBrutosEur - totalOlivettaUsd;
+  const gananciaNeta = montoNetoMoon - nominaComisionesTotales - gastosTotales;
+
+  if (elIngresosTotales) elIngresosTotales.textContent = `€${ingresosBrutosEur.toFixed(2)}`;
+  if (elOlivettaTotales) elOlivettaTotales.textContent = `$${totalOlivettaUsd.toFixed(2)} USD`;
+  if (elNetoMoon) elNetoMoon.textContent = `€${montoNetoMoon.toFixed(2)}`;
+  if (elNominaComisiones) elNominaComisiones.textContent = `€${nominaComisionesTotales.toFixed(2)}`;
+  if (elGastosOperativos) elGastosOperativos.textContent = `€${gastosTotales.toFixed(2)}`;
+  if (elGananciaNeta) elGananciaNeta.textContent = `€${gananciaNeta.toFixed(2)}`;
+};
+
+// 10. GESTIÓN DE MODALES
 window.openModal = function(modalId) {
   const modal = document.getElementById(modalId);
   if (modal) {
@@ -800,7 +819,7 @@ window.cerrarModalEspecialista = function() {
   window.closeModal('modalEspecialista');
 };
 
-// 9. ADMINISTRACIÓN DE SERVICIOS Y ESPECIALISTAS
+// 11. ADMINISTRACIÓN DE SERVICIOS Y ESPECIALISTAS
 window.guardarServicio = async function(event) {
   if (event) event.preventDefault();
 
@@ -1099,7 +1118,7 @@ window.eliminarEspecialista = async function(idEspecialista) {
   }
 };
 
-// 10. LISTENERS TECLADO Y CLIC FUERA
+// 12. LISTENERS TECLADO Y CLIC FUERA
 const todosLosModales = [
   'modalDiario', 
   'modalSemanal', 
@@ -1133,7 +1152,6 @@ window.addEventListener('click', (e) => {
 // MÓDULO DE CUENTAS POR COBRAR Y WHATSAPP
 // ==========================================
 
-// 1. Cargar y renderizar la lista de clientes pendientes
 window.cargarCuentasPendientes = async function() {
   const container = document.getElementById('listaCuentasPendientes');
   if (!container) return;
@@ -1183,7 +1201,6 @@ window.cargarCuentasPendientes = async function() {
         </div>
 
         <div class="flex gap-2 mt-1 border-t border-slate-200/60 pt-2">
-          <!-- Botón de Recordatorio por WhatsApp -->
           <a 
             href="https://wa.me/?text=${mensajeWA}" 
             target="_blank" 
@@ -1192,7 +1209,6 @@ window.cargarCuentasPendientes = async function() {
             💬 Recordar por WhatsApp
           </a>
 
-          <!-- Botón para Saldar/Liquidar la Deuda -->
           <button 
             onclick="window.prepararLiquidarPago('${v.id}', '${v.nombre_clienta}', ${montoEur})" 
             class="bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] py-1.5 px-3 rounded-lg transition"
@@ -1207,7 +1223,6 @@ window.cargarCuentasPendientes = async function() {
   container.innerHTML = html;
 };
 
-// 2. Preparar el modal de cobro para una venta específica
 window.prepararLiquidarPago = function(ventaId, cliente, montoEur) {
   document.getElementById('liquidarVentaId').value = ventaId;
   document.getElementById('liquidarClienteLabel').textContent = cliente;
@@ -1216,7 +1231,6 @@ window.prepararLiquidarPago = function(ventaId, cliente, montoEur) {
   window.openModal('modalLiquidarPago');
 };
 
-// 3. Confirmar y procesar la liquidación en Supabase
 window.procesarLiquidarPago = async function(e) {
   e.preventDefault();
 
@@ -1249,10 +1263,11 @@ function construirMensajeWhatsApp(venta, tasa) {
   const montoBs = (montoEur * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const servicioNombre = venta.servicios ? venta.servicios.nombre : 'Servicio de belleza';
 
-  const texto = `Hola ${venta.nombre_clienta} 👋✨ Esperamos que te encuentres muy bien.\n\nTe escribimos de *Olivetta* para recordarte el pago pendiente de tu servicio *${servicioNombre}* por un monto de *€${montoEur}* (equivalente a *${montoBs} Bs* a la tasa BCV del día).\n\nSi ya realizaste el pago, por favor compártenos el comprobante por este medio. ¡Muchas gracias! 💕`;
+  const texto = `Hola ${venta.nombre_clienta} 👋✨ Esperamos que te encuentres muy bien.\n\nTe escribimos de *Moon Spa Lecheria* para recordarte el pago pendiente de tu servicio *${servicioNombre}* por un monto de *€${montoEur}* (equivalente a *${montoBs} Bs* a la tasa BCV del día).\n\nSi ya realizaste el pago, por favor compártenos el comprobante por este medio. ¡Muchas gracias! 💕`;
 
   return encodeURIComponent(texto);
 }
+
 // ==========================================
 // MÓDULO CONTROL Y ABONOS OLIVETTA ($USD)
 // ==========================================
@@ -1263,14 +1278,12 @@ window.abrirModalOlivetta = function() {
 };
 
 window.cargarResumenOlivetta = async function() {
-  // 1. Obtener consumos totales desde ventas_diarias
-  const { data: ventas, error: errVentas } = await supabase
+  const { data: ventas } = await supabase
     .from('ventas_diarias')
     .select('monto_olivetta_usd');
 
   const totalConsumido = (ventas || []).reduce((acc, v) => acc + (parseFloat(v.monto_olivetta_usd) || 0), 0);
 
-  // 2. Obtener abonos realizados desde abonos_olivetta
   const { data: abonos, error: errAbonos } = await supabase
     .from('abonos_olivetta')
     .select('*')
@@ -1279,7 +1292,6 @@ window.cargarResumenOlivetta = async function() {
   const totalAbonado = (abonos || []).reduce((acc, a) => acc + (parseFloat(a.monto_usd) || 0), 0);
   const saldoPendiente = totalConsumido - totalAbonado;
 
-  // Renderizar Totales
   const elConsumido = document.getElementById('olivettaTotalConsumido');
   const elAbonado = document.getElementById('olivettaTotalAbonado');
   const elPendiente = document.getElementById('olivettaSaldoPendiente');
@@ -1288,7 +1300,6 @@ window.cargarResumenOlivetta = async function() {
   if (elAbonado) elAbonado.textContent = `$${totalAbonado.toFixed(2)} USD`;
   if (elPendiente) elPendiente.textContent = `$${saldoPendiente.toFixed(2)} USD`;
 
-  // Renderizar Tabla de Abonos
   const tbody = document.getElementById('tablaAbonosOlivettaBody');
   if (!tbody) return;
 
