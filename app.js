@@ -105,7 +105,7 @@ window.registrarGasto = async function(e) {
   }
 };
 
-// 7. CIERRE SEMANAL DINÁMICO POR FECHA SELECCIONADA
+// 7. CIERRE SEMANAL DINÁMICO (SÁBADO A VIERNES)
 window.renderCierreSemanal = async function() {
   const tbody = document.getElementById('tablaNominaSemanal');
   const elIngresosArea = document.getElementById('ingresosPorAreaContainer');
@@ -119,33 +119,43 @@ window.renderCierreSemanal = async function() {
   const fechaFiltroVal = document.getElementById('filtroFechaSemanal')?.value;
   const fechaBase = fechaFiltroVal ? new Date(fechaFiltroVal + 'T00:00:00') : new Date();
 
-  // Calcular Lunes y Domingo de la semana elegida
-  const primerDiaSemana = new Date(fechaBase);
-  const diaSemana = primerDiaSemana.getDay() === 0 ? 7 : primerDiaSemana.getDay(); // Ajuste domingo=7
-  primerDiaSemana.setDate(primerDiaSemana.getDate() - diaSemana + 1);
-  primerDiaSemana.setHours(0,0,0,0);
+  // LÓGICA DE SÁBADO A VIERNES:
+  // getDay(): Dom=0, Lun=1, Mar=2, Mié=3, Jue=4, Vie=5, Sáb=6
+  const day = fechaBase.getDay();
+  
+  // Calcular distancia al Sábado anterior o actual
+  const offsetSabado = (day === 6) ? 0 : (day + 1);
+  
+  const sabadoInicio = new Date(fechaBase);
+  sabadoInicio.setDate(sabadoInicio.getDate() - offsetSabado);
+  sabadoInicio.setHours(0,0,0,0);
 
-  const ultimoDiaSemana = new Date(primerDiaSemana);
-  ultimoDiaSemana.setDate(ultimoDiaSemana.getDate() + 6);
-  ultimoDiaSemana.setHours(23,59,59,999);
+  const viernesFin = new Date(sabadoInicio);
+  viernesFin.setDate(viernesFin.getDate() + 6);
+  viernesFin.setHours(23,59,59,999);
+
+  const domingoPago = new Date(sabadoInicio);
+  domingoPago.setDate(domingoPago.getDate() + 8); // Domingo siguiente al corte
 
   if (elRangoSemana) {
-    const f1 = primerDiaSemana.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
-    const f2 = ultimoDiaSemana.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    elRangoSemana.textContent = `Semana del ${f1} al ${f2}`;
+    const f1 = sabadoInicio.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+    const f2 = viernesFin.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const fPago = domingoPago.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+    elRangoSemana.textContent = `Ciclo: Sáb ${f1} al Vie ${f2} | 🗓️ Pago Nómina: Dom ${fPago}`;
   }
 
+  // Consulta en Supabase en el rango Sábado - Viernes
   const { data: ventasSemana } = await supabase
     .from('ventas_diarias')
     .select(`*, servicios(nombre, categoria), especialistas(nombre, porcentaje_comision)`)
-    .gte('fecha', primerDiaSemana.toISOString())
-    .lte('fecha', ultimoDiaSemana.toISOString());
+    .gte('fecha', sabadoInicio.toISOString())
+    .lte('fecha', viernesFin.toISOString());
 
   const { data: gastosSemana } = await supabase
     .from('gastos_operativos')
     .select('*')
-    .gte('fecha', primerDiaSemana.toISOString())
-    .lte('fecha', ultimoDiaSemana.toISOString());
+    .gte('fecha', sabadoInicio.toISOString())
+    .lte('fecha', viernesFin.toISOString());
 
   const ventas = ventasSemana || [];
   const gastos = gastosSemana || [];
@@ -178,8 +188,9 @@ window.renderCierreSemanal = async function() {
     `;
   });
 
-  tbody.innerHTML = htmlTabla || `<tr><td colspan="6" class="p-4 text-center text-slate-400">Sin datos en esta semana.</td></tr>`;
+  tbody.innerHTML = htmlTabla || `<tr><td colspan="6" class="p-4 text-center text-slate-400">Sin datos en este ciclo semanal.</td></tr>`;
 
+  // Cálculos de resumen (Área, Métodos de Pago, Balance y Olivetta)
   const ingresosPorCategoria = {};
   let totalVentasSemanaEur = 0;
   let cuentasPendientes = 0;
@@ -246,7 +257,6 @@ window.renderCierreSemanal = async function() {
     elOlivettaContainer.textContent = `$${totalOlivettaSemanaUsd.toFixed(2)} USD`;
   }
 };
-
 // 8. CIERRE MENSUAL DINÁMICO POR MES SELECCIONADO
 window.renderCierreMensual = async function() {
   const elIngresosTotales = document.getElementById('mensualIngresosTotales');
