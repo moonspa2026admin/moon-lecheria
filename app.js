@@ -12,6 +12,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   const fechaLabel = document.getElementById('fechaActualLabel');
   if (fechaLabel) fechaLabel.textContent = hoyStr;
 
+  // Precargar las fechas de los tres cierres a la fecha de hoy por defecto
+  const hoyIsoStr = new Date().toISOString().split('T')[0];
+  const mesIsoStr = hoyIsoStr.substring(0, 7);
+
+  if (document.getElementById('filtroFechaDiario')) document.getElementById('filtroFechaDiario').value = hoyIsoStr;
+  if (document.getElementById('filtroFechaSemanal')) document.getElementById('filtroFechaSemanal').value = hoyIsoStr;
+  if (document.getElementById('filtroMesMensual')) document.getElementById('filtroMesMensual').value = mesIsoStr;
+
   await cargarTasaBcvEnLinea();
   await cargarSelects();
   await cargarVentasDia();
@@ -97,29 +105,47 @@ window.registrarGasto = async function(e) {
   }
 };
 
-// 7. CIERRE SEMANAL DINÁMICO
+// 7. CIERRE SEMANAL DINÁMICO POR FECHA SELECCIONADA
 window.renderCierreSemanal = async function() {
   const tbody = document.getElementById('tablaNominaSemanal');
   const elIngresosArea = document.getElementById('ingresosPorAreaContainer');
   const elDistribucionPago = document.getElementById('distribucionPagosContainer');
   const elBalanceSemanal = document.getElementById('balanceNetoSemanalVal');
   const elCuentasPendientes = document.getElementById('cuentasPendientesSemanalVal');
+  const elRangoSemana = document.getElementById('rangoSemanaLabel');
 
   if (!tbody) return;
 
-  const ahora = new Date();
-  const primerDiaSemana = new Date(ahora.setDate(ahora.getDate() - ahora.getDay() + 1));
+  const fechaFiltroVal = document.getElementById('filtroFechaSemanal')?.value;
+  const fechaBase = fechaFiltroVal ? new Date(fechaFiltroVal + 'T00:00:00') : new Date();
+
+  // Calcular Lunes y Domingo de la semana elegida
+  const primerDiaSemana = new Date(fechaBase);
+  const diaSemana = primerDiaSemana.getDay() === 0 ? 7 : primerDiaSemana.getDay(); // Ajuste domingo=7
+  primerDiaSemana.setDate(primerDiaSemana.getDate() - diaSemana + 1);
   primerDiaSemana.setHours(0,0,0,0);
+
+  const ultimoDiaSemana = new Date(primerDiaSemana);
+  ultimoDiaSemana.setDate(ultimoDiaSemana.getDate() + 6);
+  ultimoDiaSemana.setHours(23,59,59,999);
+
+  if (elRangoSemana) {
+    const f1 = primerDiaSemana.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+    const f2 = ultimoDiaSemana.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    elRangoSemana.textContent = `Semana del ${f1} al ${f2}`;
+  }
 
   const { data: ventasSemana } = await supabase
     .from('ventas_diarias')
     .select(`*, servicios(nombre, categoria), especialistas(nombre, porcentaje_comision)`)
-    .gte('fecha', primerDiaSemana.toISOString());
+    .gte('fecha', primerDiaSemana.toISOString())
+    .lte('fecha', ultimoDiaSemana.toISOString());
 
   const { data: gastosSemana } = await supabase
     .from('gastos_operativos')
     .select('*')
-    .gte('fecha', primerDiaSemana.toISOString());
+    .gte('fecha', primerDiaSemana.toISOString())
+    .lte('fecha', ultimoDiaSemana.toISOString());
 
   const ventas = ventasSemana || [];
   const gastos = gastosSemana || [];
@@ -152,7 +178,7 @@ window.renderCierreSemanal = async function() {
     `;
   });
 
-  tbody.innerHTML = htmlTabla || `<tr><td colspan="6" class="p-4 text-center text-slate-400">Sin datos esta semana.</td></tr>`;
+  tbody.innerHTML = htmlTabla || `<tr><td colspan="6" class="p-4 text-center text-slate-400">Sin datos en esta semana.</td></tr>`;
 
   const ingresosPorCategoria = {};
   let totalVentasSemanaEur = 0;
@@ -214,35 +240,50 @@ window.renderCierreSemanal = async function() {
   if (elBalanceSemanal) elBalanceSemanal.textContent = `€${balanceNeto.toFixed(2)}`;
   if (elCuentasPendientes) elCuentasPendientes.textContent = `Cuentas por Cobrar Pendientes: €${cuentasPendientes.toFixed(2)}`;
 
-  // 1. Totalizar consumos de Olivetta en la semana
   const totalOlivettaSemanaUsd = ventas.reduce((acc, v) => acc + (parseFloat(v.monto_olivetta_usd) || 0), 0);
-
-  // 2. Renderizar tarjeta o fila de resumen para Olivetta
   const elOlivettaContainer = document.getElementById('totalOlivettaSemanalVal');
   if (elOlivettaContainer) {
     elOlivettaContainer.textContent = `$${totalOlivettaSemanaUsd.toFixed(2)} USD`;
   }
 };
 
-// 8. CIERRE MENSUAL DINÁMICO
+// 8. CIERRE MENSUAL DINÁMICO POR MES SELECCIONADO
 window.renderCierreMensual = async function() {
   const elIngresosTotales = document.getElementById('mensualIngresosTotales');
   const elNominaComisiones = document.getElementById('mensualNominaComisiones');
   const elGastosOperativos = document.getElementById('mensualGastosOperativos');
   const elGananciaNeta = document.getElementById('mensualGananciaNeta');
+  const elMesLabel = document.getElementById('mesSeleccionadoLabel');
 
-  const ahora = new Date();
-  const primerDiaMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString();
+  const mesFiltroVal = document.getElementById('filtroMesMensual')?.value; // Formato "YYYY-MM"
+  let fechaInicio, fechaFin;
+
+  if (mesFiltroVal) {
+    const [year, month] = mesFiltroVal.split('-');
+    fechaInicio = new Date(year, month - 1, 1).toISOString();
+    fechaFin = new Date(year, month, 0, 23, 59, 59, 999).toISOString();
+
+    if (elMesLabel) {
+      const nomMes = new Date(year, month - 1, 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+      elMesLabel.textContent = `Resumen consolidado para ${nomMes}`;
+    }
+  } else {
+    const ahora = new Date();
+    fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString();
+    fechaFin = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0, 23, 59, 59, 999).toISOString();
+  }
 
   const { data: ventasMes } = await supabase
     .from('ventas_diarias')
     .select(`*, especialistas(porcentaje_comision)`)
-    .gte('fecha', primerDiaMes);
+    .gte('fecha', fechaInicio)
+    .lte('fecha', fechaFin);
 
   const { data: gastosMes } = await supabase
     .from('gastos_operativos')
     .select('*')
-    .gte('fecha', primerDiaMes);
+    .gte('fecha', fechaInicio)
+    .lte('fecha', fechaFin);
 
   const ventas = ventasMes || [];
   const gastos = gastosMes || [];
@@ -297,7 +338,6 @@ async function cargarSelects() {
   }
 }
 
-// Cargar porcentaje automático al seleccionar especialista
 window.alCambiarEspecialista = function() {
   const selectEspecialista = document.getElementById('selectEspecialista');
   const inputPorcentaje = document.getElementById('porcentajeComision');
@@ -329,20 +369,17 @@ window.abrirModalVenta = function() {
   window.openModal('modalVenta');
   cargarSelects();
 
-  // Fecha del día por defecto
   const fechaInput = document.getElementById('fechaVenta');
   if (fechaInput && !fechaInput.value) {
     const hoy = new Date().toISOString().split('T')[0];
     fechaInput.value = hoy;
   }
 
-  // Precargar tasa oficial actual en la casilla de tasa editable
   const inputTasa = document.getElementById('tasaAplicadaInput');
   if (inputTasa && tasaActual > 0) {
     inputTasa.value = tasaActual;
   }
 
-  // Listener para recalcular Bolívares si cambia la Tasa o el Monto
   inputTasa?.addEventListener('input', calcularBolivares);
 };
 
@@ -374,18 +411,15 @@ async function registrarVenta(e) {
   const especialistaId = document.getElementById('selectEspecialista').value;
   const porcentajeComision = parseFloat(document.getElementById('porcentajeComision')?.value) || 0;
   
-  // Montos y Tasa Editable
   const montoEur = parseFloat(document.getElementById('montoEur').value) || 0;
   const tasaAplicada = parseFloat(document.getElementById('tasaAplicadaInput')?.value) || tasaActual || 0;
   const montoVes = montoEur * tasaAplicada;
 
-  // Desglose de Pago Mixto
   const cash = parseFloat(document.getElementById('montoCash')?.value) || 0;
   const pm = parseFloat(document.getElementById('montoPagoMovil')?.value) || 0;
   const pdv = parseFloat(document.getElementById('montoPdv')?.value) || 0;
   const zelle = parseFloat(document.getElementById('montoZelle')?.value) || 0;
 
-  // Construir resumen textual para metodo_pago
   const desgloseMetodos = [];
   if (cash > 0) desgloseMetodos.push(`Cash (€${cash})`);
   if (pm > 0) desgloseMetodos.push(`Pago Móvil (€${pm})`);
@@ -406,7 +440,7 @@ async function registrarVenta(e) {
     especialista_id: especialistaId,
     porcentaje_comision: porcentajeComision,
     monto_eur: montoEur,
-    tasa_aplicada: tasaAplicada, // Se guarda la tasa específica ingresada
+    tasa_aplicada: tasaAplicada,
     monto_ves: montoVes,
     metodo_pago: metodoPagoFinal,
     referencia_pago: referenciaPago,
@@ -518,7 +552,7 @@ async function cargarVentasDia() {
   }
 }
 
-// 6. DETALLE POR ESPECIALISTA (MODAL TÁCTIL)
+// 6. DETALLE POR ESPECIALISTA
 window.verDetalleEspecialista = function(nombreEspecialista) {
   const serviciosEsp = ventasHoyCache.filter(v => {
     const espNom = v.especialistas ? v.especialistas.nombre : 'General';
@@ -597,8 +631,8 @@ window.verDetalleEspecialista = function(nombreEspecialista) {
   window.openModal('modalDetalleEspecialista');
 };
 
-// 7. CORRECCIÓN DE TOTALES EN CIERRE DIARIO
-window.renderCierreDiario = function() {
+// 7. CIERRE DIARIO DINÁMICO SEGÚN FECHA SELECCIONADA
+window.renderCierreDiario = async function() {
   const tbody = document.getElementById('tablaServiciosDiarios');
   const listaComisiones = document.getElementById('listaComisiones');
   const elFechaDiario = document.getElementById('fechaDiario');
@@ -607,21 +641,33 @@ window.renderCierreDiario = function() {
   
   if (!tbody) return;
 
-  const hoyLocal = new Date();
-  const hoyIsoStr = hoyLocal.getFullYear() + '-' + String(hoyLocal.getMonth() + 1).padStart(2, '0') + '-' + String(hoyLocal.getDate()).padStart(2, '0');
+  const fechaFiltroVal = document.getElementById('filtroFechaDiario')?.value;
+  const fechaObj = fechaFiltroVal ? new Date(fechaFiltroVal + 'T00:00:00') : new Date();
+  const fechaIsoStr = fechaFiltroVal || new Date().toISOString().split('T')[0];
 
   if (elFechaDiario) {
-    elFechaDiario.textContent = `Resumen al ${hoyLocal.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+    elFechaDiario.textContent = `Resumen al ${fechaObj.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
   }
 
-  const ventasHoy = (window.ventas || []).filter(v => {
-    const fv = v.fecha ? v.fecha.split('T')[0] : hoyIsoStr;
-    return fv === hoyIsoStr;
-  });
+  // Traer desde Supabase las ventas exactas de esa fecha seleccionada
+  const inicioDia = `${fechaIsoStr}T00:00:00`;
+  const finDia = `${fechaIsoStr}T23:59:59`;
+
+  const { data: ventasDiariasBusqueda } = await supabase
+    .from('ventas_diarias')
+    .select(`
+      *,
+      servicios (nombre, categoria),
+      especialistas (nombre, porcentaje_comision)
+    `)
+    .gte('fecha', inicioDia)
+    .lte('fecha', finDia);
+
+  const ventasHoy = ventasDiariasBusqueda || [];
 
   if (ventasHoy.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">No se han registrado ventas hoy.</td></tr>`;
-    if (listaComisiones) listaComisiones.innerHTML = '<li class="text-slate-400">• Sin comisiones ni propinas hoy</li>';
+    tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">No hay ventas registradas en esta fecha.</td></tr>`;
+    if (listaComisiones) listaComisiones.innerHTML = '<li class="text-slate-400">• Sin comisiones ni propinas en esta fecha</li>';
     if (elTotalRecaudado) elTotalRecaudado.textContent = '0.00 €';
     if (elCierreCaja) elCierreCaja.textContent = '0.00 €';
     return;
@@ -700,6 +746,7 @@ window.openModal = function(modalId) {
     modal.classList.remove('hidden');
     if (modalId === 'modalDiario') window.renderCierreDiario();
     if (modalId === 'modalSemanal') window.renderCierreSemanal();
+    if (modalId === 'modalMensual') window.renderCierreMensual();
   }
 };
 
