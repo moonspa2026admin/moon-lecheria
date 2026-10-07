@@ -25,7 +25,7 @@
         </div>
       </div>
 
-      <!-- Badge Compacto y Simbólico: Tasa BCV (€) -->
+      <!-- Badge Compacto: Tasa BCV (€) -->
       <div class="inline-flex items-center gap-2 bg-emerald-50/80 border border-emerald-200/80 rounded-full px-3 py-1 shadow-2xs">
         <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
         <span class="text-[11px] font-semibold text-emerald-800 uppercase tracking-wide">BCV (€):</span>
@@ -51,6 +51,11 @@
           <!-- Registrar Gasto Operativo -->
           <button onclick="window.abrirModalGasto()" class="bg-rose-100 hover:bg-rose-200 text-rose-900 text-xs px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 shadow-2xs border border-rose-200">
             <span>💸</span> Registrar Gasto
+          </button>
+
+          <!-- Control y Abonos Olivetta -->
+          <button onclick="window.abrirModalOlivetta()" class="bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 shadow-2xs border border-amber-200">
+            <span>🍹</span> Control / Abono Olivetta
           </button>
         </div>
 
@@ -149,20 +154,16 @@
       </div>
 
       <form id="formVenta" class="space-y-3 text-xs">
-        
-        <!-- Fecha del Registro -->
         <div>
           <label class="block font-semibold text-slate-700 mb-1">Fecha de Registro</label>
           <input type="date" id="fechaVenta" required class="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900 text-slate-700">
         </div>
 
-        <!-- Cliente -->
         <div>
           <label class="block font-semibold text-slate-700 mb-1">Nombre de la Clienta</label>
           <input type="text" id="nombreClienta" required placeholder="Ej. Desiree Salazar" class="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900 text-slate-700">
         </div>
 
-        <!-- Servicio y Especialista -->
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block font-semibold text-slate-700 mb-1">Categoría / Servicio</label>
@@ -178,7 +179,6 @@
           </div>
         </div>
 
-        <!-- Porcentaje Comisión y Estado -->
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block font-semibold text-slate-700 mb-1">Porcentaje Comisión (%)</label>
@@ -193,7 +193,6 @@
           </div>
         </div>
 
-        <!-- Monto (€), Tasa Aplicada (Bs/€) y Total en Bs. -->
         <div class="grid grid-cols-3 gap-2">
           <div>
             <label class="block font-semibold text-slate-700 mb-1">Monto (€)</label>
@@ -209,7 +208,7 @@
           </div>
         </div>
 
-        <!-- Métodos de Pago Mixtos/Combinados -->
+        <!-- Forma de Pago (Mixto) -->
         <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 my-2 space-y-2">
           <div class="flex justify-between items-center">
             <label class="block font-bold text-slate-700 text-xs uppercase">💳 Forma de Pago (Mixto / Combinado)</label>
@@ -241,7 +240,6 @@
           </div>
         </div>
 
-        <!-- Propina -->
         <div>
           <label class="block font-semibold text-slate-700 mb-1">Propina (€)</label>
           <input type="number" step="0.01" id="propinaEur" value="0" class="w-full border border-slate-300 rounded-lg p-2.5 outline-none text-slate-700">
@@ -430,7 +428,7 @@
   </div>
 
   <!-- MODALES DE CIERRES -->
-  
+
   <!-- MODAL 1: CIERRE DIARIO -->
   <div id="modalDiario" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6">
@@ -439,7 +437,6 @@
           <h3 class="text-xl font-bold text-slate-800">Cierre Diario</h3>
           <p class="text-xs text-slate-500" id="fechaDiario">Resumen Diario</p>
         </div>
-        <!-- Selector de Calendario Día -->
         <div class="flex items-center gap-2">
           <label class="text-xs font-semibold text-slate-600">Fecha:</label>
           <input type="date" id="filtroFechaDiario" onchange="window.renderCierreDiario()" class="border border-slate-300 rounded-lg p-1.5 text-xs outline-none bg-slate-50 font-medium text-slate-800">
@@ -460,18 +457,14 @@
               <th class="p-2 border">Ref.</th>
             </tr>
           </thead>
-          <tbody id="tablaServiciosDiarios">
-            <!-- Cargado dinámicamente desde JS -->
-          </tbody>
+          <tbody id="tablaServiciosDiarios"></tbody>
         </table>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border">
         <div>
           <h4 class="font-bold text-sm text-slate-700 mb-2 border-b pb-1">Comisiones y Propinas por Profesional</h4>
-          <ul class="text-xs space-y-1 text-slate-600" id="listaComisiones">
-            <!-- Cargado dinámicamente desde JS -->
-          </ul>
+          <ul class="text-xs space-y-1 text-slate-600" id="listaComisiones"></ul>
         </div>
         <div class="flex flex-col justify-between border-t md:border-t-0 md:border-l pt-3 md:pt-0 md:pl-4">
           <div>
@@ -487,23 +480,20 @@
     </div>
   </div>
 
- <!-- MODAL 2: RESUMEN SEMANAL (SÁBADO A VIERNES) -->
-<div id="modalSemanal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-  <div class="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto p-6">
-    <div class="flex flex-col sm:flex-row justify-between sm:items-center border-b pb-3 mb-4 gap-2">
-      <div>
-        <h3 class="text-xl font-bold text-slate-800">Cierre Semanal de Nómina</h3>
-        <p class="text-xs text-slate-500" id="rangoSemanaLabel">Ciclo: Sábado a Viernes | Liquidación: Domingo</p>
+  <!-- MODAL 2: RESUMEN SEMANAL -->
+  <div id="modalSemanal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto p-6">
+      <div class="flex flex-col sm:flex-row justify-between sm:items-center border-b pb-3 mb-4 gap-2">
+        <div>
+          <h3 class="text-xl font-bold text-slate-800">Cierre Semanal de Nómina</h3>
+          <p class="text-xs text-slate-500" id="rangoSemanaLabel">Ciclo: Sábado a Viernes | Liquidación: Domingo</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-xs font-semibold text-slate-600">Ver Semana:</label>
+          <input type="date" id="filtroFechaSemanal" onchange="window.renderCierreSemanal()" class="border border-slate-300 rounded-lg p-1.5 text-xs outline-none bg-slate-50 font-medium text-slate-800">
+          <button onclick="window.closeModal('modalSemanal')" class="text-slate-400 hover:text-slate-600 text-xl font-bold ml-2">&times;</button>
+        </div>
       </div>
-      <!-- Selector de Calendario para Semana -->
-      <div class="flex items-center gap-2">
-        <label class="text-xs font-semibold text-slate-600">Ver Semana:</label>
-        <input type="date" id="filtroFechaSemanal" onchange="window.renderCierreSemanal()" class="border border-slate-300 rounded-lg p-1.5 text-xs outline-none bg-slate-50 font-medium text-slate-800">
-        <button onclick="window.closeModal('modalSemanal')" class="text-slate-400 hover:text-slate-600 text-xl font-bold ml-2">&times;</button>
-      </div>
-    </div>
-
-    <!-- Resto del modal del Resumen Semanal... -->+
 
       <h4 class="font-bold text-sm text-slate-700 mb-2">Comisiones y Propinas Semanales por Personal (€)</h4>
       <div class="overflow-x-auto mb-6">
@@ -517,24 +507,18 @@
               <th class="p-2 border font-bold bg-blue-100">Total (Bs)</th>
             </tr>
           </thead>
-          <tbody id="tablaNominaSemanal">
-            <!-- Cargado dinámicamente desde JS -->
-          </tbody>
+          <tbody id="tablaNominaSemanal"></tbody>
         </table>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-lg border">
         <div>
           <h5 class="font-bold text-xs text-slate-700 uppercase border-b pb-1 mb-2">Ingresos por Área</h5>
-          <div id="ingresosPorAreaContainer" class="space-y-1">
-            <!-- Dinámico desde JS -->
-          </div>
+          <div id="ingresosPorAreaContainer" class="space-y-1"></div>
         </div>
         <div>
           <h5 class="font-bold text-xs text-slate-700 uppercase border-b pb-1 mb-2">Distribución de Pagos</h5>
-          <div id="distribucionPagosContainer" class="space-y-1">
-            <!-- Dinámico desde JS -->
-          </div>
+          <div id="distribucionPagosContainer" class="space-y-1"></div>
         </div>
         <div class="bg-indigo-900 text-white p-3.5 rounded-xl flex flex-col justify-between">
           <div>
@@ -547,7 +531,7 @@
         </div>
         <div class="bg-amber-900 text-white p-3.5 rounded-xl flex flex-col justify-between">
           <div>
-            <span class="text-[10px] uppercase tracking-wider text-amber-200 block font-bold"> Total a Rendir Olivetta ($USD)</span>
+            <span class="text-[10px] uppercase tracking-wider text-amber-200 block font-bold">Total a Rendir Olivetta ($USD)</span>
             <div id="totalOlivettaSemanalVal" class="text-2xl font-black mt-1">$0.00 USD</div>
           </div>
           <div class="text-[11px] text-amber-200 border-t border-amber-700/80 pt-2 mt-2">
@@ -566,7 +550,6 @@
           <h3 class="text-2xl font-extrabold text-slate-800">Dashboard de Cierre Mensual</h3>
           <p class="text-xs text-slate-500" id="mesSeleccionadoLabel">Resumen consolidado de rendimiento financiero</p>
         </div>
-        <!-- Selector de Calendario Mes -->
         <div class="flex items-center gap-2">
           <label class="text-xs font-semibold text-slate-600">Mes:</label>
           <input type="month" id="filtroMesMensual" onchange="window.renderCierreMensual()" class="border border-slate-300 rounded-lg p-1.5 text-xs outline-none bg-slate-50 font-medium text-slate-800">
@@ -598,8 +581,6 @@
   <!-- Modal: Detalle de Servicios por Especialista -->
   <div id="modalDetalleEspecialista" class="fixed inset-0 bg-black/50 backdrop-blur-xs hidden flex items-center justify-center z-50 p-4 overflow-y-auto">
     <div class="bg-white rounded-2xl w-full max-w-2xl shadow-2xl border border-slate-100 my-auto overflow-hidden">
-      
-      <!-- Cabecera del Modal -->
       <div class="px-6 py-4 bg-emerald-50/60 border-b border-emerald-100 flex items-center justify-between">
         <div class="flex items-center gap-2">
           <span class="text-xl">👩‍🎨</span>
@@ -611,7 +592,6 @@
         <button onclick="window.closeModal('modalDetalleEspecialista')" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
       </div>
 
-      <!-- Contenido / Tabla -->
       <div class="p-5 max-h-[70vh] overflow-y-auto space-y-4">
         <div class="overflow-x-auto rounded-xl border border-slate-200">
           <table class="w-full text-left border-collapse text-xs">
@@ -625,13 +605,10 @@
                 <th class="p-3 text-right bg-emerald-50/50 text-emerald-800">Comisión (€)</th>
               </tr>
             </thead>
-            <tbody id="tablaDetalleEspecialistaBody" class="divide-y divide-slate-100 text-slate-700">
-              <!-- Se llena dinámicamente -->
-            </tbody>
+            <tbody id="tablaDetalleEspecialistaBody" class="divide-y divide-slate-100 text-slate-700"></tbody>
           </table>
         </div>
 
-        <!-- Resumen Consolidado -->
         <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs">
           <div>
             <span class="text-slate-400 block font-medium">Total Servicios Recaudados</span>
@@ -644,7 +621,6 @@
         </div>
       </div>
 
-      <!-- Pie del Modal -->
       <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-end">
         <button onclick="window.closeModal('modalDetalleEspecialista')" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition">
           Cerrar
@@ -662,11 +638,7 @@
         </h3>
         <button onclick="window.closeModal('modalCuentasPendientes')" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
       </div>
-
-      <!-- Lista con Scroll -->
-      <div id="listaCuentasPendientes" class="space-y-3 overflow-y-auto pr-1 flex-1">
-        <!-- Se llena dinámicamente con JS -->
-      </div>
+      <div id="listaCuentasPendientes" class="space-y-3 overflow-y-auto pr-1 flex-1"></div>
     </div>
   </div>
 
@@ -714,6 +686,85 @@
           Confirmar y Cambiar a "Pagado"
         </button>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal: Control y Abonos Olivetta ($USD) -->
+  <div id="modalOlivetta" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center hidden z-50 p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 my-auto overflow-hidden">
+      
+      <!-- Cabecera -->
+      <div class="flex justify-between items-center mb-4 border-b border-amber-100 pb-3">
+        <h3 class="text-base font-bold text-amber-900 flex items-center gap-2">
+          <span>🍹</span> Gestión de Cuenta Olivetta ($USD)
+        </h3>
+        <button onclick="window.closeModal('modalOlivetta')" class="text-slate-400 hover:text-slate-600 font-bold text-xl">&times;</button>
+      </div>
+
+      <!-- Cards de Balance Consolidado -->
+      <div class="grid grid-cols-3 gap-3 mb-4 text-xs">
+        <div class="bg-amber-50 border border-amber-200 p-3 rounded-xl">
+          <span class="text-slate-500 font-medium block">Total Consumido:</span>
+          <span id="olivettaTotalConsumido" class="text-base font-black text-amber-800">$0.00 USD</span>
+        </div>
+        <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl">
+          <span class="text-slate-500 font-medium block">Total Abonado / Pagado:</span>
+          <span id="olivettaTotalAbonado" class="text-base font-black text-emerald-700">$0.00 USD</span>
+        </div>
+        <div class="bg-slate-900 text-white p-3 rounded-xl">
+          <span class="text-amber-200 font-bold block">Saldo Pendiente:</span>
+          <span id="olivettaSaldoPendiente" class="text-base font-black text-white">$0.00 USD</span>
+        </div>
+      </div>
+
+      <!-- Formulario para Registrar Abono -->
+      <form onsubmit="window.registrarAbonoOlivetta(event)" class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-4 space-y-2 text-xs">
+        <h4 class="font-bold text-slate-800 uppercase text-[11px]">➕ Registrar Pago / Abono a Olivetta</h4>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div>
+            <label class="block text-slate-600 font-medium mb-1">Monto ($USD)</label>
+            <input type="number" step="0.01" id="montoAbonoOlivetta" required placeholder="0.00 $" class="w-full border rounded-lg p-2 outline-none bg-white font-bold text-slate-800">
+          </div>
+          <div>
+            <label class="block text-slate-600 font-medium mb-1">Método de Pago</label>
+            <select id="metodoAbonoOlivetta" class="w-full border rounded-lg p-2 outline-none bg-white">
+              <option value="Efectivo USD">Efectivo ($USD)</option>
+              <option value="Zelle">Zelle</option>
+              <option value="Pago Móvil / Equivalente">Pago Móvil (Bs)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-600 font-medium mb-1">Referencia / Nota</label>
+            <input type="text" id="referenciaAbonoOlivetta" placeholder="Ej. Entrega semanal" class="w-full border rounded-lg p-2 outline-none bg-white">
+          </div>
+        </div>
+        <div class="flex justify-end pt-1">
+          <button type="submit" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-1.5 rounded-lg transition">
+            Registrar Abono
+          </button>
+        </div>
+      </form>
+
+      <!-- Historial de Abonos / Entregas -->
+      <div>
+        <h4 class="font-bold text-slate-700 text-xs mb-2">📜 Historial de Abonos / Entregas Realizadas</h4>
+        <div class="border rounded-xl overflow-hidden max-h-40 overflow-y-auto bg-white text-xs">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-100 text-slate-600 font-semibold border-b">
+                <th class="p-2">Fecha</th>
+                <th class="p-2">Método</th>
+                <th class="p-2">Nota / Ref</th>
+                <th class="p-2 text-right">Monto ($USD)</th>
+              </tr>
+            </thead>
+            <tbody id="tablaAbonosOlivettaBody" class="divide-y divide-slate-100">
+              <tr><td colspan="4" class="p-3 text-center text-slate-400">Cargando abonos...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   </div>
 

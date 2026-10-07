@@ -1253,3 +1253,89 @@ function construirMensajeWhatsApp(venta, tasa) {
 
   return encodeURIComponent(texto);
 }
+// ==========================================
+// MÓDULO CONTROL Y ABONOS OLIVETTA ($USD)
+// ==========================================
+
+window.abrirModalOlivetta = function() {
+  window.openModal('modalOlivetta');
+  window.cargarResumenOlivetta();
+};
+
+window.cargarResumenOlivetta = async function() {
+  // 1. Obtener consumos totales desde ventas_diarias
+  const { data: ventas, error: errVentas } = await supabase
+    .from('ventas_diarias')
+    .select('monto_olivetta_usd');
+
+  const totalConsumido = (ventas || []).reduce((acc, v) => acc + (parseFloat(v.monto_olivetta_usd) || 0), 0);
+
+  // 2. Obtener abonos realizados desde abonos_olivetta
+  const { data: abonos, error: errAbonos } = await supabase
+    .from('abonos_olivetta')
+    .select('*')
+    .order('fecha', { ascending: false });
+
+  const totalAbonado = (abonos || []).reduce((acc, a) => acc + (parseFloat(a.monto_usd) || 0), 0);
+  const saldoPendiente = totalConsumido - totalAbonado;
+
+  // Renderizar Totales
+  const elConsumido = document.getElementById('olivettaTotalConsumido');
+  const elAbonado = document.getElementById('olivettaTotalAbonado');
+  const elPendiente = document.getElementById('olivettaSaldoPendiente');
+
+  if (elConsumido) elConsumido.textContent = `$${totalConsumido.toFixed(2)} USD`;
+  if (elAbonado) elAbonado.textContent = `$${totalAbonado.toFixed(2)} USD`;
+  if (elPendiente) elPendiente.textContent = `$${saldoPendiente.toFixed(2)} USD`;
+
+  // Renderizar Tabla de Abonos
+  const tbody = document.getElementById('tablaAbonosOlivettaBody');
+  if (!tbody) return;
+
+  if (errAbonos || !abonos || abonos.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-400">No se han registrado abonos a Olivetta aún.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = abonos.map(a => {
+    const f = new Date(a.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return `
+      <tr class="hover:bg-slate-50 border-b">
+        <td class="p-2 font-medium">${f}</td>
+        <td class="p-2">${a.metodo_pago || 'Cash'}</td>
+        <td class="p-2 text-slate-500">${a.referencia || '-'}</td>
+        <td class="p-2 text-right font-bold text-emerald-600">$${parseFloat(a.monto_usd || 0).toFixed(2)}</td>
+      </tr>
+    `;
+  }).join('');
+};
+
+window.registrarAbonoOlivetta = async function(e) {
+  e.preventDefault();
+
+  const montoUsd = parseFloat(document.getElementById('montoAbonoOlivetta').value) || 0;
+  const metodoPago = document.getElementById('metodoAbonoOlivetta').value;
+  const referencia = document.getElementById('referenciaAbonoOlivetta').value;
+
+  if (montoUsd <= 0) {
+    alert("Por favor ingrese un monto de abono válido.");
+    return;
+  }
+
+  const { error } = await supabase.from('abonos_olivetta').insert([{
+    monto_usd: montoUsd,
+    metodo_pago: metodoPago,
+    referencia: referencia,
+    fecha: new Date().toISOString()
+  }]);
+
+  if (error) {
+    alert("Error al registrar abono: " + error.message);
+  } else {
+    alert("¡Abono a Olivetta registrado con éxito!");
+    document.getElementById('montoAbonoOlivetta').value = '';
+    document.getElementById('referenciaAbonoOlivetta').value = '';
+    window.cargarResumenOlivetta();
+    if (typeof renderCierreSemanal === 'function') renderCierreSemanal();
+  }
+};
