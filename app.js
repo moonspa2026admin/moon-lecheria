@@ -6,7 +6,7 @@ let serviciosData = [];
 let especialistasData = [];
 let ventasHoyCache = [];
 
-// Variable global para controlar la instancia del gráfico comparativo
+// Variable global para Chart.js
 let chartComparativoInstance = null;
 
 // INICIALIZACIÓN
@@ -811,26 +811,43 @@ window.renderCierreMensual = async function() {
     });
   }
 
-  // Cargar datos de producción de los 3 meses
+  // Cargar datos de producción y ganancias netas de los 3 meses
   const datosPromesas = ultimos3Meses.map(async (mInfo) => {
     const { data: vts } = await supabase
       .from('ventas_diarias')
-      .select('monto_eur, monto_olivetta_usd')
+      .select(`monto_eur, propina_eur, monto_olivetta_usd, especialistas(porcentaje_comision)`)
+      .gte('fecha', mInfo.inicio)
+      .lte('fecha', mInfo.fin);
+
+    const { data: gts } = await supabase
+      .from('gastos_operativos')
+      .select('monto_eur')
       .gte('fecha', mInfo.inicio)
       .lte('fecha', mInfo.fin);
 
     let bruto = 0;
     let olivetta = 0;
+    let nominaComisiones = 0;
 
     (vts || []).forEach(v => {
-      bruto += parseFloat(v.monto_eur) || 0;
-      olivetta += parseFloat(v.monto_olivetta_usd) || 0;
+      const monto = parseFloat(v.monto_eur) || 0;
+      const propina = parseFloat(v.propina_eur) || 0;
+      const oliv = parseFloat(v.monto_olivetta_usd) || 0;
+      const pct = v.especialistas ? parseFloat(v.especialistas.porcentaje_comision) : 40;
+
+      bruto += monto;
+      olivetta += oliv;
+      nominaComisiones += ((monto * pct) / 100) + propina;
     });
+
+    const gastosMes = (gts || []).reduce((acc, g) => acc + (parseFloat(g.monto_eur) || 0), 0);
+    const netoMoon = bruto - olivetta;
+    const gananciaNetaCalculada = netoMoon - nominaComisiones - gastosMes;
 
     return {
       mes: mInfo.etiqueta,
       bruto: bruto,
-      netoMoon: bruto - olivetta
+      gananciaNeta: gananciaNetaCalculada
     };
   });
 
@@ -856,8 +873,8 @@ window.renderCierreMensual = async function() {
           borderRadius: 6
         },
         {
-          label: 'Monto Neto Moon (€)',
-          data: datosTrimestre.map(d => d.netoMoon),
+          label: 'Ganancia Neta (€)',
+          data: datosTrimestre.map(d => d.gananciaNeta),
           backgroundColor: '#10b981', // Verde Esmeralda Tailwind
           borderRadius: 6
         }
