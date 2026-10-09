@@ -653,34 +653,59 @@ window.renderCierreSemanal = async function() {
     `).join('') || '<p class="text-xs text-slate-400">Sin registros</p>';
   }
 
-  const distribucionPagos = {};
+  // Agrupación y totalización limpia por tipo de método de pago
+  const distribucionPagos = {
+    'Pago Móvil': { eur: 0, bs: 0 },
+    'Punto de Venta (PDV)': { eur: 0, bs: 0 },
+    'Efectivo / Cash': { eur: 0, bs: 0 },
+    'Zelle': { eur: 0, bs: 0 },
+    'Otros': { eur: 0, bs: 0 }
+  };
 
   ventas.forEach(v => {
-    const metodo = v.metodo_pago || 'Otros';
+    const metodoRaw = (v.metodo_pago || '').toLowerCase();
     const montoEur = parseFloat(v.monto_eur) || 0;
     const montoBs = parseFloat(v.monto_ves) || 0;
 
-    if (!distribucionPagos[metodo]) {
-      distribucionPagos[metodo] = { eur: 0, bs: 0 };
+    if (metodoRaw.includes('pago móvil') || metodoRaw.includes('pago movil') || metodoRaw.includes('pm')) {
+      distribucionPagos['Pago Móvil'].eur += montoEur;
+      distribucionPagos['Pago Móvil'].bs += montoBs;
+    } else if (metodoRaw.includes('punto') || metodoRaw.includes('pdv')) {
+      distribucionPagos['Punto de Venta (PDV)'].eur += montoEur;
+      distribucionPagos['Punto de Venta (PDV)'].bs += montoBs;
+    } else if (metodoRaw.includes('cash') || metodoRaw.includes('efectivo')) {
+      distribucionPagos['Efectivo / Cash'].eur += montoEur;
+      distribucionPagos['Efectivo / Cash'].bs += montoBs;
+    } else if (metodoRaw.includes('zelle')) {
+      distribucionPagos['Zelle'].eur += montoEur;
+      distribucionPagos['Zelle'].bs += montoBs;
+    } else {
+      distribucionPagos['Otros'].eur += montoEur;
+      distribucionPagos['Otros'].bs += montoBs;
     }
-    distribucionPagos[metodo].eur += montoEur;
-    distribucionPagos[metodo].bs += montoBs;
   });
 
   if (elDistribucionPago) {
-    elDistribucionPago.innerHTML = Object.entries(distribucionPagos).map(([metodo, totales]) => {
-      const esMonedaNacional = metodo.includes('Pago Móvil') || metodo.includes('Punto de Venta') || metodo.includes('PDV');
-      const valorMostrar = esMonedaNacional 
-        ? `${totales.bs.toLocaleString('es-VE', {minimumFractionDigits: 2})} Bs` 
-        : `€${totales.eur.toFixed(2)}`;
+    let htmlMetodos = '';
 
-      return `
-        <div class="flex justify-between text-xs font-semibold text-slate-700 py-1 border-b border-slate-100 last:border-b-0">
-          <span>💳 ${metodo}:</span>
-          <span class="font-bold">${valorMostrar}</span>
-        </div>
-      `;
-    }).join('') || '<p class="text-xs text-slate-400">Sin transacciones registradas</p>';
+    Object.entries(distribucionPagos).forEach(([metodo, totales]) => {
+      // Mostrar solo métodos que tengan transacciones registradas en la semana
+      if (totales.eur > 0 || totales.bs > 0) {
+        const tieneBs = totales.bs > 0;
+        
+        htmlMetodos += `
+          <div class="flex justify-between items-center text-xs py-1.5 border-b border-slate-100 last:border-b-0">
+            <span class="font-bold text-slate-700">💳 ${metodo}:</span>
+            <div class="text-right">
+              <span class="font-black text-slate-900 block">€${totales.eur.toFixed(2)}</span>
+              ${tieneBs ? `<span class="text-[10px] text-slate-500 font-medium block">(${totales.bs.toLocaleString('es-VE', {minimumFractionDigits: 2})} Bs)</span>` : ''}
+            </div>
+          </div>
+        `;
+      }
+    });
+
+    elDistribucionPago.innerHTML = htmlMetodos || '<p class="text-xs text-slate-400">Sin transacciones registradas</p>';
   }
 
   const totalGastosSemanaEur = gastos.reduce((acc, g) => acc + (parseFloat(g.monto_eur) || 0), 0);
