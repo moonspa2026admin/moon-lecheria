@@ -6,6 +6,9 @@ let serviciosData = [];
 let especialistasData = [];
 let ventasHoyCache = [];
 
+// Variable global para controlar la instancia del gráfico comparativo
+let chartComparativoInstance = null;
+
 // INICIALIZACIÓN
 document.addEventListener('DOMContentLoaded', async () => {
   const hoyStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -689,7 +692,6 @@ window.renderCierreSemanal = async function() {
     let htmlMetodos = '';
 
     Object.entries(distribucionPagos).forEach(([metodo, totales]) => {
-      // Mostrar solo métodos que tengan transacciones registradas en la semana
       if (totales.eur > 0 || totales.bs > 0) {
         const tieneBs = totales.bs > 0;
         
@@ -721,7 +723,7 @@ window.renderCierreSemanal = async function() {
   }
 };
 
-// 9. DASHBOARD MENSUAL (DETERMINANDO MONTO NETO MOON)
+// 9. DASHBOARD MENSUAL CON GRÁFICO COMPARATIVO TRIMESTRAL
 window.renderCierreMensual = async function() {
   const elIngresosTotales = document.getElementById('mensualIngresosTotales');
   const elOlivettaTotales = document.getElementById('mensualOlivettaTotales');
@@ -731,35 +733,40 @@ window.renderCierreMensual = async function() {
   const elGananciaNeta = document.getElementById('mensualGananciaNeta');
   const elMesLabel = document.getElementById('mesSeleccionadoLabel');
 
-  const mesFiltroVal = document.getElementById('filtroMesMensual')?.value;
-  let fechaInicio, fechaFin;
+  const mesFiltroVal = document.getElementById('filtroMesMensual')?.value; // "YYYY-MM"
+  
+  let anoSeleccionado, mesIndex;
 
   if (mesFiltroVal) {
     const [year, month] = mesFiltroVal.split('-');
-    fechaInicio = new Date(year, month - 1, 1).toISOString();
-    fechaFin = new Date(year, month, 0, 23, 59, 59, 999).toISOString();
-
-    if (elMesLabel) {
-      const nomMes = new Date(year, month - 1, 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-      elMesLabel.textContent = `Resumen consolidado para ${nomMes}`;
-    }
+    anoSeleccionado = parseInt(year);
+    mesIndex = parseInt(month) - 1; // 0-indexed
   } else {
     const ahora = new Date();
-    fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString();
-    fechaFin = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0, 23, 59, 59, 999).toISOString();
+    anoSeleccionado = ahora.getFullYear();
+    mesIndex = ahora.getMonth();
+  }
+
+  // 1. CONSOLIDADO DEL MES SELECCIONADO (Sin modificaciones a tus tarjetas)
+  const fechaInicioActual = new Date(anoSeleccionado, mesIndex, 1).toISOString();
+  const fechaFinActual = new Date(anoSeleccionado, mesIndex + 1, 0, 23, 59, 59, 999).toISOString();
+
+  if (elMesLabel) {
+    const nomMes = new Date(anoSeleccionado, mesIndex, 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+    elMesLabel.textContent = `Resumen consolidado para ${nomMes}`;
   }
 
   const { data: ventasMes } = await supabase
     .from('ventas_diarias')
     .select(`*, especialistas(porcentaje_comision)`)
-    .gte('fecha', fechaInicio)
-    .lte('fecha', fechaFin);
+    .gte('fecha', fechaInicioActual)
+    .lte('fecha', fechaFinActual);
 
   const { data: gastosMes } = await supabase
     .from('gastos_operativos')
     .select('*')
-    .gte('fecha', fechaInicio)
-    .lte('fecha', fechaFin);
+    .gte('fecha', fechaInicioActual)
+    .lte('fecha', fechaFinActual);
 
   const ventas = ventasMes || [];
   const gastos = gastosMes || [];
@@ -780,8 +787,6 @@ window.renderCierreMensual = async function() {
   });
 
   const gastosTotales = gastos.reduce((acc, g) => acc + (parseFloat(g.monto_eur) || 0), 0);
-  
-  // Cálculo de Neto Moon Spa
   const montoNetoMoon = ingresosBrutosEur - totalOlivettaUsd;
   const gananciaNeta = montoNetoMoon - nominaComisionesTotales - gastosTotales;
 
@@ -791,6 +796,99 @@ window.renderCierreMensual = async function() {
   if (elNominaComisiones) elNominaComisiones.textContent = `€${nominaComisionesTotales.toFixed(2)}`;
   if (elGastosOperativos) elGastosOperativos.textContent = `€${gastosTotales.toFixed(2)}`;
   if (elGananciaNeta) elGananciaNeta.textContent = `€${gananciaNeta.toFixed(2)}`;
+
+  // 2. CONSTRUCCIÓN DE PRODUCCIÓN PARA LOS ÚLTIMOS 3 MESES
+  const ultimos3Meses = [];
+  for (let i = 2; i >= 0; i--) {
+    const d = new Date(anoSeleccionado, mesIndex - i, 1);
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    
+    ultimos3Meses.push({
+      etiqueta: d.toLocaleDateString('es-ES', { month: 'short' }).toUpperCase(),
+      inicio: new Date(y, m, 1).toISOString(),
+      fin: new Date(y, m + 1, 0, 23, 59, 59, 999).toISOString()
+    });
+  }
+
+  // Cargar datos de producción de los 3 meses
+  const datosPromesas = ultimos3Meses.map(async (mInfo) => {
+    const { data: vts } = await supabase
+      .from('ventas_diarias')
+      .select('monto_eur, monto_olivetta_usd')
+      .gte('fecha', mInfo.inicio)
+      .lte('fecha', mInfo.fin);
+
+    let bruto = 0;
+    let olivetta = 0;
+
+    (vts || []).forEach(v => {
+      bruto += parseFloat(v.monto_eur) || 0;
+      olivetta += parseFloat(v.monto_olivetta_usd) || 0;
+    });
+
+    return {
+      mes: mInfo.etiqueta,
+      bruto: bruto,
+      netoMoon: bruto - olivetta
+    };
+  });
+
+  const datosTrimestre = await Promise.all(datosPromesas);
+
+  // 3. RENDERIZADO DEL GRÁFICO (Chart.js)
+  const canvas = document.getElementById('graficoTrimestralCanvas');
+  if (!canvas) return;
+
+  if (chartComparativoInstance) {
+    chartComparativoInstance.destroy(); // Limpia la gráfica previa al cambiar fecha
+  }
+
+  chartComparativoInstance = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: datosTrimestre.map(d => d.mes),
+      datasets: [
+        {
+          label: 'Ingresos Brutos (€)',
+          data: datosTrimestre.map(d => d.bruto),
+          backgroundColor: '#3b82f6', // Azul Tailwind
+          borderRadius: 6
+        },
+        {
+          label: 'Monto Neto Moon (€)',
+          data: datosTrimestre.map(d => d.netoMoon),
+          backgroundColor: '#10b981', // Verde Esmeralda Tailwind
+          borderRadius: 6
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: {
+            font: { size: 11, weight: '600' }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `${ctx.dataset.label}: €${ctx.raw.toFixed(2)}`
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: (val) => `€${val}`
+          }
+        }
+      }
+    }
+  });
 };
 
 // 10. GESTIÓN DE MODALES

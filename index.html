@@ -6,6 +6,7 @@
   <title>Moon.lecheria - Control Administrativo</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-[#faf7f5] text-slate-800 font-sans antialiased min-h-screen pb-12">
 
@@ -549,44 +550,59 @@
   </div>
 
   <!-- MODAL 3: DASHBOARD CIERRE DE MES -->
-  <div id="modalMensual" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto p-6">
-      <div class="flex flex-col sm:flex-row justify-between sm:items-center border-b pb-3 mb-6 gap-2">
-        <div>
-          <h3 class="text-2xl font-extrabold text-slate-800">Dashboard de Cierre Mensual</h3>
-          <p class="text-xs text-slate-500" id="mesSeleccionadoLabel">Resumen consolidado de rendimiento financiero</p>
-        </div>
-        <div class="flex items-center gap-2">
-          <label class="text-xs font-semibold text-slate-600">Mes:</label>
-          <input type="month" id="filtroMesMensual" onchange="window.renderCierreMensual()" class="border border-slate-300 rounded-lg p-1.5 text-xs outline-none bg-slate-50 font-medium text-slate-800">
-          <button onclick="window.closeModal('modalMensual')" class="text-slate-400 hover:text-slate-600 text-2xl font-bold ml-2">&times;</button>
-        </div>
+<div id="modalMensual" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto p-6">
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center border-b pb-3 mb-6 gap-2">
+      <div>
+        <h3 class="text-2xl font-extrabold text-slate-800">Dashboard de Cierre Mensual</h3>
+        <p class="text-xs text-slate-500" id="mesSeleccionadoLabel">Resumen consolidado de rendimiento financiero</p>
       </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-5 gap-3 mb-6">
-        <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl">
-          <span class="text-[11px] font-semibold text-slate-500 uppercase">Ingresos Brutos</span>
-          <div class="text-xl font-black text-slate-800 mt-1" id="mensualIngresosTotales">0,00 €</div>
-        </div>
-        <div class="bg-amber-50 border border-amber-200 p-3 rounded-xl">
-          <span class="text-[11px] font-semibold text-amber-700 uppercase">(-) Olivetta</span>
-          <div class="text-xl font-black text-amber-800 mt-1" id="mensualOlivettaTotales">0,00 $</div>
-        </div>
-        <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl">
-          <span class="text-[11px] font-semibold text-emerald-700 uppercase">Monto Neto Moon</span>
-          <div class="text-xl font-black text-emerald-900 mt-1" id="mensualNetoMoon">0,00 €</div>
-        </div>
-        <div class="bg-rose-50 border border-rose-200 p-3 rounded-xl">
-          <span class="text-[11px] font-semibold text-rose-600 uppercase">Nómina / Comisiones</span>
-          <div class="text-xl font-black text-rose-900 mt-1" id="mensualNominaComisiones">0,00 €</div>
-        </div>
-        <div class="bg-indigo-50 border border-indigo-200 p-3 rounded-xl">
-          <span class="text-[11px] font-semibold text-indigo-600 uppercase">Ganancia Neta</span>
-          <div class="text-xl font-black text-indigo-900 mt-1" id="mensualGananciaNeta">0,00 €</div>
-        </div>
+      <div class="flex items-center gap-2">
+        <label class="text-xs font-semibold text-slate-600">Mes:</label>
+        <input type="month" id="filtroMesMensual" onchange="window.renderCierreMensual()" class="border border-slate-300 rounded-lg p-1.5 text-xs outline-none bg-slate-50 font-medium text-slate-800">
+        <button onclick="window.closeModal('modalMensual')" class="text-slate-400 hover:text-slate-600 text-2xl font-bold ml-2">&times;</button>
       </div>
     </div>
+
+    <!-- TARJETAS CONSOLIDADAS (Existentes) -->
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-3 mb-6">
+      <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl">
+        <span class="text-[11px] font-semibold text-slate-500 uppercase">Ingresos Brutos</span>
+        <div class="text-xl font-black text-slate-800 mt-1" id="mensualIngresosTotales">0,00 €</div>
+      </div>
+      <div class="bg-amber-50 border border-amber-200 p-3 rounded-xl">
+        <span class="text-[11px] font-semibold text-amber-700 uppercase">(-) Olivetta</span>
+        <div class="text-xl font-black text-amber-800 mt-1" id="mensualOlivettaTotales">0,00 $</div>
+      </div>
+      <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl">
+        <span class="text-[11px] font-semibold text-emerald-700 uppercase">Monto Neto Moon</span>
+        <div class="text-xl font-black text-emerald-900 mt-1" id="mensualNetoMoon">0,00 €</div>
+      </div>
+      <div class="bg-rose-50 border border-rose-200 p-3 rounded-xl">
+        <span class="text-[11px] font-semibold text-rose-600 uppercase">Nómina / Comisiones</span>
+        <div class="text-xl font-black text-rose-900 mt-1" id="mensualNominaComisiones">0,00 €</div>
+      </div>
+      <div class="bg-indigo-50 border border-indigo-200 p-3 rounded-xl">
+        <span class="text-[11px] font-semibold text-indigo-600 uppercase">Ganancia Neta</span>
+        <div class="text-xl font-black text-indigo-900 mt-1" id="mensualGananciaNeta">0,00 €</div>
+      </div>
+    </div>
+
+    <!-- NUEVA SECCIÓN: GRÁFICO COMPARATIVO TRIMESTRAL -->
+    <div class="bg-slate-50/70 border border-slate-200 p-4 rounded-2xl">
+      <div class="flex items-center justify-between mb-3">
+        <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wide flex items-center gap-2">
+          <span>📊</span> Comparativa de Producción (Últimos 3 Meses)
+        </h4>
+        <span class="text-[11px] text-slate-500 font-medium">Valores en Euros (€)</span>
+      </div>
+      <div class="relative w-full h-64">
+        <canvas id="graficoTrimestralCanvas"></canvas>
+      </div>
+    </div>
+
   </div>
+</div>
 
   <!-- Modal: Detalle de Servicios por Especialista -->
   <div id="modalDetalleEspecialista" class="fixed inset-0 bg-black/50 backdrop-blur-xs hidden flex items-center justify-center z-50 p-4 overflow-y-auto">
