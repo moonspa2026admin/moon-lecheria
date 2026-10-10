@@ -252,7 +252,6 @@ window.eliminarServicioDeLista = async function(index) {
 };
 
 // E. Registrar la Venta o Liquidar Cuenta Completa
-// E. Registrar la Venta o Liquidar Cuenta Completa
 async function registrarVenta(e) {
   e.preventDefault();
 
@@ -271,10 +270,12 @@ async function registrarVenta(e) {
   const pdv = parseFloat(document.getElementById('montoPdv')?.value) || 0;
   const zelle = parseFloat(document.getElementById('montoZelle')?.value) || 0;
   
-  // Capturar la propina ingresada en el modal
+  // Capturar propina y consumo de Olivetta ingresados en el modal
   const propinaTotalInput = parseFloat(document.getElementById('montoPropina')?.value) || 0;
-  // Dividir la propina equitativamente entre los servicios de la cuenta si hay varios
   const propinaPorServicio = serviciosCuentaTemporal.length > 0 ? (propinaTotalInput / serviciosCuentaTemporal.length) : 0;
+
+  const olivettaTotalInput = parseFloat(document.getElementById('montoOlivettaUsd')?.value) || 0;
+  const olivettaPorServicio = serviciosCuentaTemporal.length > 0 ? (olivettaTotalInput / serviciosCuentaTemporal.length) : 0;
 
   const desgloseMetodos = [];
   if (cash > 0) desgloseMetodos.push(`Cash (€${cash})`);
@@ -297,7 +298,8 @@ async function registrarVenta(e) {
       especialista_id: item.especialista_id,
       porcentaje_comision: item.porcentaje_comision,
       monto_eur: item.monto_eur,
-      propina_eur: propinaPorServicio, // Guardar la propina asignada
+      propina_eur: propinaPorServicio,
+      monto_olivetta_usd: olivettaPorServicio, // Guardar consumo Olivetta asignado
       tasa_aplicada: tasaAplicada,
       monto_ves: item.monto_eur * tasaAplicada,
       metodo_pago: metodoPagoFinal,
@@ -332,8 +334,7 @@ async function registrarVenta(e) {
   document.getElementById('formVenta').reset();
   window.cerrarModalVenta();
   cargarVentasDia();
-}
-// 1. TASA OFICIAL EURO BCV
+}// 1. TASA OFICIAL EURO BCV
 async function cargarTasaBcvEnLinea() {
   const elMonto = document.getElementById('tasa-euro-monto');
   if (elMonto) elMonto.textContent = 'Cargando...';
