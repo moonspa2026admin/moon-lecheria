@@ -84,8 +84,8 @@ window.alSeleccionarServicioYEspecialista = function() {
   }
 };
 
-// A. Abrir el modal de cuenta abierta / nueva venta
-window.abrirModalVenta = async function(cuentaIdExistente = null, nombreClienteExistente = '') {
+// A. Abrir el modal de venta / Gestión de Cuenta de Clienta
+window.abrirModalVenta = async function(nombreClienteExistente = null) {
   window.openModal('modalVenta');
   cargarSelects();
 
@@ -101,14 +101,14 @@ window.abrirModalVenta = async function(cuentaIdExistente = null, nombreClienteE
 
   const inputNombre = document.getElementById('nombreClienta');
 
-  if (cuentaIdExistente) {
-    cuentaAbiertaActualId = cuentaIdExistente;
+  // Si abrimos la cuenta de una clienta existente desde la tabla
+  if (nombreClienteExistente) {
     if (inputNombre) {
       inputNombre.value = nombreClienteExistente;
-      inputNombre.disabled = true;
     }
-    await cargarServiciosDeCuentaAbierta(cuentaIdExistente);
+    await cargarServiciosDelDiaClienta(nombreClienteExistente);
   } else {
+    // Si es un registro desde cero
     cuentaAbiertaActualId = null;
     serviciosCuentaTemporal = [];
     if (inputNombre) {
@@ -117,12 +117,39 @@ window.abrirModalVenta = async function(cuentaIdExistente = null, nombreClienteE
     }
     renderTablaServiciosAgregados();
   }
-
-  const btnGuardar = document.getElementById('btnProcesarPagoCuenta');
-  if (btnGuardar) btnGuardar.textContent = '💾 Cerrar Cuenta y Registrar Pago';
 };
 
-// B. Agregar servicio a la cuenta abierta actual
+// C. Cargar todos los servicios registrados hoy para una clienta específica
+async function cargarServiciosDelDiaClienta(nombreClienta) {
+  const hoyStr = new Date().toISOString().split('T')[0];
+  const inicioDia = `${hoyStr}T00:00:00`;
+  const finDia = `${hoyStr}T23:59:59`;
+
+  const { data, error } = await supabase
+    .from('ventas_diarias')
+    .select(`
+      id, monto_eur, porcentaje_comision, estado_pago,
+      servicios(nombre),
+      especialistas(nombre)
+    `)
+    .ilike('nombre_clienta', nombreClienta)
+    .gte('fecha', inicioDia)
+    .lte('fecha', finDia);
+
+  if (!error && data) {
+    serviciosCuentaTemporal = data.map(item => ({
+      id: item.id,
+      servicio_nombre: item.servicios ? item.servicios.nombre : 'Servicio',
+      especialista_nombre: item.especialistas ? item.especialistas.nombre : 'Especialista',
+      monto_eur: parseFloat(item.monto_eur || 0),
+      porcentaje_comision: parseFloat(item.porcentaje_comision || 40),
+      estado_pago: item.estado_pago
+    }));
+    renderTablaServiciosAgregados();
+  }
+}
+
+// B. Agregar servicio a la lista temporal/DB
 window.agregarServicioALista = async function() {
   const nombreClienta = document.getElementById('nombreClienta').value.trim();
   const selectServ = document.getElementById('selectServicio');
@@ -146,66 +173,27 @@ window.agregarServicioALista = async function() {
     return;
   }
 
-  if (!cuentaAbiertaActualId) {
-    const { data: nuevaCuenta, error } = await supabase
-      .from('cuentas_abiertas')
-      .insert([{ nombre_clienta: nombreClienta, estado: 'Abierta' }])
-      .select()
-      .single();
+  const servObj = serviciosData.find(s => s.id == servicioId);
+  const espObj = especialistasData.find(e => e.id == especialistaId);
 
-    if (error) {
-      alert("Error al abrir cuenta: " + error.message);
-      return;
-    }
-    cuentaAbiertaActualId = nuevaCuenta.id;
-    const inputNombre = document.getElementById('nombreClienta');
-    if (inputNombre) inputNombre.disabled = true;
-  }
-
-  const { error: errServ } = await supabase.from('cuenta_servicios').insert([{
-    cuenta_id: cuentaAbiertaActualId,
+  // Agregar al arreglo local de la cuenta
+  serviciosCuentaTemporal.push({
     servicio_id: servicioId,
+    servicio_nombre: servObj ? servObj.nombre : 'Servicio',
     especialista_id: especialistaId,
+    especialista_nombre: espObj ? espObj.nombre : 'Especialista',
     monto_eur: monto,
     porcentaje_comision: porcentaje
-  }]);
+  });
 
-  if (errServ) {
-    alert("Error al agregar servicio: " + errServ.message);
-    return;
-  }
-
+  // Limpiar selectores
   selectServ.value = '';
   selectEsp.value = '';
   inputMonto.value = '';
   inputComision.value = '';
 
-  await cargarServiciosDeCuentaAbierta(cuentaAbiertaActualId);
+  renderTablaServiciosAgregados();
 };
-
-// C. Cargar los servicios de una cuenta abierta en el modal
-async function cargarServiciosDeCuentaAbierta(cuentaId) {
-  cuentaAbiertaActualId = cuentaId;
-  const { data, error } = await supabase
-    .from('cuenta_servicios')
-    .select(`
-      id, monto_eur, porcentaje_comision,
-      servicios(nombre),
-      especialistas(nombre)
-    `)
-    .eq('cuenta_id', cuentaId);
-
-  if (!error && data) {
-    serviciosCuentaTemporal = data.map(item => ({
-      id: item.id,
-      servicio_nombre: item.servicios ? item.servicios.nombre : 'Servicio',
-      especialista_nombre: item.especialistas ? item.especialistas.nombre : 'Especialista',
-      monto_eur: parseFloat(item.monto_eur),
-      porcentaje_comision: parseFloat(item.porcentaje_comision)
-    }));
-    renderTablaServiciosAgregados();
-  }
-}
 
 // D. Renderizar la tabla dentro del modal de venta
 function renderTablaServiciosAgregados() {
@@ -223,16 +211,20 @@ function renderTablaServiciosAgregados() {
   }
 
   let totalEur = 0;
-  tbody.innerHTML = serviciosCuentaTemporal.map((item) => {
+  tbody.innerHTML = serviciosCuentaTemporal.map((item, index) => {
     totalEur += item.monto_eur;
+    const badgeEstado = item.id 
+      ? `<span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">Guardado</span>`
+      : `<span class="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">Nuevo</span>`;
+
     return `
       <tr class="border-b hover:bg-slate-50 text-xs">
-        <td class="p-2.5 font-semibold text-slate-800">${item.servicio_nombre}</td>
+        <td class="p-2.5 font-semibold text-slate-800">${item.servicio_nombre} ${badgeEstado}</td>
         <td class="p-2.5 text-slate-600">${item.especialista_nombre}</td>
         <td class="p-2.5 text-right font-bold text-slate-900">€${item.monto_eur.toFixed(2)}</td>
         <td class="p-2.5 text-center font-bold text-amber-600 bg-amber-50/50">${item.porcentaje_comision}%</td>
         <td class="p-2.5 text-center">
-          <button type="button" onclick="window.eliminarServicioDeCuenta('${item.id}')" class="text-rose-500 hover:text-rose-700 font-bold">✕</button>
+          <button type="button" onclick="window.eliminarServicioDeLista(${index})" class="text-rose-500 hover:text-rose-700 font-bold">✕</button>
         </td>
       </tr>
     `;
@@ -245,23 +237,30 @@ function renderTablaServiciosAgregados() {
   if (elTotalBs) elTotalBs.textContent = `${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs`;
 }
 
-window.eliminarServicioDeCuenta = async function(detalleId) {
-  const { error } = await supabase.from('cuenta_servicios').delete().eq('id', detalleId);
-  if (!error && cuentaAbiertaActualId) {
-    await cargarServiciosDeCuentaAbierta(cuentaAbiertaActualId);
+window.eliminarServicioDeLista = async function(index) {
+  const item = serviciosCuentaTemporal[index];
+  if (item.id) {
+    // Si ya estaba guardado en la base de datos, lo eliminamos de la tabla ventas_diarias
+    const { error } = await supabase.from('ventas_diarias').delete().eq('id', item.id);
+    if (error) {
+      alert("Error al eliminar servicio: " + error.message);
+      return;
+    }
   }
+  serviciosCuentaTemporal.splice(index, 1);
+  renderTablaServiciosAgregados();
 };
 
-// E. Cerrar cuenta y registrar el pago definitivo en ventas_diarias
+// E. Registrar la Venta o Liquidar Cuenta Completa
 async function registrarVenta(e) {
   e.preventDefault();
 
-  if (!cuentaAbiertaActualId || serviciosCuentaTemporal.length === 0) {
+  if (serviciosCuentaTemporal.length === 0) {
     alert("La cuenta no tiene servicios agregados para procesar.");
     return;
   }
 
-  const nombreClienta = document.getElementById('nombreClienta').value;
+  const nombreClienta = document.getElementById('nombreClienta').value.trim();
   const fechaInput = document.getElementById('fechaVenta')?.value;
   const fechaSeleccionada = fechaInput ? new Date(fechaInput).toISOString() : new Date().toISOString();
   const tasaAplicada = parseFloat(document.getElementById('tasaAplicadaInput')?.value) || window.tasaActual || 0;
@@ -281,14 +280,15 @@ async function registrarVenta(e) {
   const referenciaPago = document.getElementById('referenciaPago').value;
   const estadoPago = document.getElementById('estadoPago').value;
 
-  const ventasInsertar = serviciosCuentaTemporal.map(item => {
-    const servOriginal = serviciosData.find(s => s.nombre === item.servicio_nombre);
-    const espOriginal = especialistasData.find(e => e.nombre === item.especialista_nombre);
-    return {
+  // Filtrar ítems que son nuevos (no guardados aún en BD)
+  const nuevosServicios = serviciosCuentaTemporal.filter(item => !item.id);
+
+  if (nuevosServicios.length > 0) {
+    const ventasInsertar = nuevosServicios.map(item => ({
       fecha: fechaSeleccionada,
       nombre_clienta: nombreClienta,
-      servicio_id: servOriginal ? servOriginal.id : null,
-      especialista_id: espOriginal ? espOriginal.id : null,
+      servicio_id: item.servicio_id,
+      especialista_id: item.especialista_id,
       porcentaje_comision: item.porcentaje_comision,
       monto_eur: item.monto_eur,
       tasa_aplicada: tasaAplicada,
@@ -296,25 +296,35 @@ async function registrarVenta(e) {
       metodo_pago: metodoPagoFinal,
       referencia_pago: referenciaPago,
       estado_pago: estadoPago
-    };
-  });
+    }));
 
-  const { error } = await supabase.from('ventas_diarias').insert(ventasInsertar);
-
-  if (error) {
-    alert("Error al cerrar la cuenta: " + error.message);
-  } else {
-    await supabase.from('cuentas_abiertas').update({ estado: 'Cerrada' }).eq('id', cuentaAbiertaActualId);
-
-    alert("¡Cuenta cerrada y pago registrado con éxito!");
-    cuentaAbiertaActualId = null;
-    serviciosCuentaTemporal = [];
-    const inputNombre = document.getElementById('nombreClienta');
-    if (inputNombre) inputNombre.disabled = false;
-    document.getElementById('formVenta').reset();
-    window.cerrarModalVenta();
-    cargarVentasDia();
+    const { error } = await supabase.from('ventas_diarias').insert(ventasInsertar);
+    if (error) {
+      alert("Error al registrar servicios: " + error.message);
+      return;
+    }
   }
+
+  // Si se selecciona "Pagado", actualizar todos los registros pendientes del día de esta clienta
+  if (estadoPago === 'Pagado') {
+    const hoyStr = new Date().toISOString().split('T')[0];
+    await supabase
+      .from('ventas_diarias')
+      .update({
+        estado_pago: 'Pagado',
+        metodo_pago: metodoPagoFinal,
+        referencia_pago: referenciaPago,
+        tasa_aplicada: tasaAplicada
+      })
+      .ilike('nombre_clienta', nombreClienta)
+      .gte('fecha', `${hoyStr}T00:00:00`);
+  }
+
+  alert("¡Cuenta procesada y actualizada con éxito!");
+  serviciosCuentaTemporal = [];
+  document.getElementById('formVenta').reset();
+  window.cerrarModalVenta();
+  cargarVentasDia();
 }
 
 // 1. TASA OFICIAL EURO BCV
@@ -488,7 +498,7 @@ window.cargarVentasDia = async function() {
         <td class="p-3">${v.metodo_pago} <span class="text-[10px] text-slate-400 block">${v.referencia_pago || ''}</span></td>
         <td class="p-3">${badgeEstado}</td>
         <td class="p-3 text-center">
-          <button onclick="window.abrirModalVenta()" class="bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[10px] px-2.5 py-1.5 rounded-lg transition" title="Gestionar cuenta">
+          <button onclick="window.abrirModalVenta('${v.nombre_clienta.replace(/'/g, "\\'")}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[10px] px-2.5 py-1.5 rounded-lg transition" title="Ver cuenta completa de la clienta">
             📂 Cuenta
           </button>
         </td>
@@ -811,9 +821,18 @@ window.renderCierreSemanal = async function() {
   let cuentasPendientes = 0;
 
   ventas.forEach(v => {
-    const cat = (v.servicios && v.servicios.categoria) ? v.servicios.categoria : 'General';
+    // Normalizar la categoría para evitar duplicados por mayúsculas/minúsculas (ej: "Uñas" y "uñas")
+    let catRaw = (v.servicios && v.servicios.categoria) ? v.servicios.categoria.trim() : 'General';
+    const cat = catRaw.charAt(0).toUpperCase() + catRaw.slice(1).toLowerCase();
+    
     const monto = parseFloat(v.monto_eur) || 0;
-    ingresosPorCategoria[cat] = (ingresosPorCategoria[cat] || 0) + monto;
+    
+    if (!ingresosPorCategoria[cat]) {
+      ingresosPorCategoria[cat] = { monto: 0, cantidad: 0 };
+    }
+    ingresosPorCategoria[cat].monto += monto;
+    ingresosPorCategoria[cat].cantidad += 1;
+
     totalVentasSemanaEur += monto;
 
     if (v.estado_pago === 'Por Cobrar') {
@@ -822,10 +841,10 @@ window.renderCierreSemanal = async function() {
   });
 
   if (elIngresosArea) {
-    elIngresosArea.innerHTML = Object.entries(ingresosPorCategoria).map(([cat, monto]) => `
-      <div class="flex justify-between text-xs font-semibold text-slate-700 py-1">
-        <span>${cat}:</span>
-        <span>€${monto.toFixed(2)}</span>
+    elIngresosArea.innerHTML = Object.entries(ingresosPorCategoria).map(([cat, info]) => `
+      <div class="flex justify-between items-center text-xs py-1 border-b border-slate-100 last:border-b-0">
+        <span class="font-semibold text-slate-700">${cat} <span class="text-[10px] text-slate-400">(${info.cantidad} serv.)</span>:</span>
+        <span class="font-bold text-slate-900">€${info.monto.toFixed(2)}</span>
       </div>
     `).join('') || '<p class="text-xs text-slate-400">Sin registros</p>';
   }
