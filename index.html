@@ -142,128 +142,134 @@
     </div>
   </main>
 
-  <!-- MODALES FLOTANTES -->
+  <!-- Modal Registrar Servicio / Venta -->
+<div id="modalVenta" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
+    <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+      <h3 class="text-lg font-bold text-slate-800">💅 Registrar Venta / Servicios</h3>
+      <button onclick="window.cerrarModalVenta()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
+    </div>
 
-  <!-- Modal: Registrar Venta / Servicio -->
-  <div id="modalVenta" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 overflow-y-auto">
-    <div class="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl border border-slate-100 my-auto">
-      <div class="flex justify-between items-center mb-4 border-b pb-3">
-        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-          <span>✍️</span> Registrar Servicio / Venta
-        </h3>
-        <button onclick="window.cerrarModalVenta()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+    <form id="formVenta" class="mt-4 space-y-4">
+      <!-- Datos Principales -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Nombre de la Clienta</label>
+          <input type="text" id="nombreClienta" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold outline-none focus:border-slate-900" placeholder="Ej: Milvida Invitada Milangel">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Fecha de Atención</label>
+          <input type="date" id="fechaVenta" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:border-slate-900">
+        </div>
       </div>
 
-      <form id="formVenta" class="space-y-3 text-xs">
-        <div>
-          <label class="block font-semibold text-slate-700 mb-1">Fecha de Registro</label>
-          <input type="date" id="fechaVenta" required class="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900 text-slate-700">
-        </div>
-
-        <div>
-          <label class="block font-semibold text-slate-700 mb-1">Nombre de la Clienta</label>
-          <input type="text" id="nombreClienta" required placeholder="Ej. Desiree Salazar" class="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900 text-slate-700">
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
+      <!-- Añadir Servicios a la Clienta -->
+      <div class="bg-slate-50 p-4 border border-slate-200 rounded-2xl space-y-3">
+        <h4 class="text-xs font-bold text-slate-800 flex items-center gap-1.5">➕ Agregar Servicio a la Clienta</h4>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
           <div>
-            <label class="block font-semibold text-slate-700 mb-1">Categoría / Servicio</label>
-            <select id="selectServicio" required class="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900 bg-white text-slate-700">
+            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Servicio</label>
+            <select id="selectServicio" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs outline-none" onchange="window.alSeleccionarServicioYEspecialista()">
               <option value="">Cargando servicios...</option>
             </select>
           </div>
+
           <div>
-            <label class="block font-semibold text-slate-700 mb-1">Especialista</label>
-            <select id="selectEspecialista" required onchange="window.alCambiarEspecialista()" class="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900 bg-white text-slate-700">
+            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Especialista</label>
+            <select id="selectEspecialista" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs outline-none" onchange="window.alSeleccionarServicioYEspecialista()">
               <option value="">Cargando especialistas...</option>
             </select>
           </div>
-        </div>
 
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Porcentaje Comisión (%)</label>
-            <input type="number" step="0.1" id="porcentajeComision" required placeholder="Ej. 50" class="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900 text-slate-700 font-semibold bg-amber-50/50">
-          </div>
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Estatus</label>
-            <select id="estadoPago" class="w-full border border-slate-300 rounded-lg p-2.5 outline-none bg-white text-slate-700">
-              <option value="Pagado">Pagado</option>
-              <option value="Por Cobrar">Por Cobrar (Pendiente)</option>
-            </select>
+          <div class="grid grid-cols-2 gap-1">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Monto (€)</label>
+              <input type="number" step="0.01" id="montoEurServicio" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-800 outline-none" placeholder="0.00">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Comisión (%)</label>
+              <input type="number" id="pctComisionServicio" class="w-full bg-amber-50 border border-amber-200 text-amber-800 font-bold rounded-lg p-2 text-xs outline-none" placeholder="%">
+            </div>
           </div>
         </div>
 
-        <div class="grid grid-cols-3 gap-2">
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Monto (€)</label>
-            <input type="number" step="0.01" id="montoEur" required placeholder="0.00" class="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900 text-slate-700 font-bold">
-          </div>
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Tasa (Bs/€)</label>
-            <input type="number" step="0.01" id="tasaAplicadaInput" required class="w-full border border-slate-300 bg-emerald-50/60 font-bold text-slate-800 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-900" placeholder="0.00">
-          </div>
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Total (Bs)</label>
-            <input type="text" id="montoBvInput" disabled placeholder="0.00 Bs" class="w-full border border-slate-200 bg-slate-100 rounded-lg p-2.5 text-slate-500 font-medium">
-          </div>
+        <button type="button" onclick="window.agregarServicioALista()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs py-2 rounded-xl transition">
+          + Agregar este Servicio a la Clienta
+        </button>
+      </div>
+
+      <!-- Tabla de Servicios Agregados a esta Clienta -->
+      <div class="border border-slate-200 rounded-xl overflow-hidden">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-100 text-slate-700 font-bold">
+            <tr>
+              <th class="p-2.5">Servicio</th>
+              <th class="p-2.5">Especialista</th>
+              <th class="p-2.5 text-right">Monto (€)</th>
+              <th class="p-2.5 text-center">Comisión</th>
+              <th class="p-2.5 text-center">Acción</th>
+            </tr>
+          </thead>
+          <tbody id="tablaServiciosAgregadosBody">
+            <tr><td colspan="5" class="p-3 text-center text-slate-400">Sin servicios agregados aún.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Resumen Totales Venta -->
+      <div class="flex justify-between items-center bg-emerald-50 p-3 rounded-xl border border-emerald-200">
+        <span class="text-xs font-bold text-emerald-900">Total a Cobrar:</span>
+        <div class="text-right">
+          <span id="totalVentaModalEur" class="text-base font-black text-emerald-700 block">€0.00</span>
+          <span id="totalVentaModalBs" class="text-[11px] text-emerald-600 font-semibold block">0.00 Bs</span>
         </div>
+      </div>
 
-        <!-- Forma de Pago (Mixto) -->
-        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 my-2 space-y-2">
-          <div class="flex justify-between items-center">
-            <label class="block font-bold text-slate-700 text-xs uppercase">💳 Forma de Pago (Mixto / Combinado)</label>
-            <span class="text-[10px] text-slate-400 font-medium">(Llena uno o varios montos)</span>
-          </div>
-
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <span class="text-[11px] text-slate-600 font-medium">Cash / Efectivo (€/$):</span>
-              <input type="number" step="0.01" id="montoCash" placeholder="0.00 €" class="w-full border rounded-lg p-2 text-xs bg-white">
-            </div>
-            <div>
-              <span class="text-[11px] text-slate-600 font-medium">Pago Móvil (Bs):</span>
-              <input type="number" step="0.01" id="montoPagoMovil" placeholder="0.00 €" class="w-full border rounded-lg p-2 text-xs bg-white">
-            </div>
-            <div>
-              <span class="text-[11px] text-slate-600 font-medium">Punto de Venta (PDV):</span>
-              <input type="number" step="0.01" id="montoPdv" placeholder="0.00 €" class="w-full border rounded-lg p-2 text-xs bg-white">
-            </div>
-            <div>
-              <span class="text-[11px] text-slate-600 font-medium">Zelle / Transferencia:</span>
-              <input type="number" step="0.01" id="montoZelle" placeholder="0.00 €" class="w-full border rounded-lg p-2 text-xs bg-white">
-            </div>
-          </div>
-
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1 mt-1">Referencia / Observación</label>
-            <input type="text" id="referenciaPago" placeholder="N° Ref. o Nota" class="w-full border border-slate-300 rounded-lg p-2 outline-none text-slate-700 bg-white">
-          </div>
-        </div>
-
+      <!-- Método de Pago y Confirmación -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2">
         <div>
-          <label class="block font-semibold text-slate-700 mb-1">Propina (€)</label>
-          <input type="number" step="0.01" id="propinaEur" value="0" class="w-full border border-slate-300 rounded-lg p-2.5 outline-none text-slate-700">
+          <label class="block text-[10px] font-bold text-slate-600">Cash (€)</label>
+          <input type="number" step="0.01" id="montoCash" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs outline-none">
         </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-600">Pago Móvil (€)</label>
+          <input type="number" step="0.01" id="montoPagoMovil" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs outline-none">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-600">PDV (€)</label>
+          <input type="number" step="0.01" id="montoPdv" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs outline-none">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-600">Zelle (€)</label>
+          <input type="number" step="0.01" id="montoZelle" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs outline-none">
+        </div>
+      </div>
 
-        <!-- Consumo Olivetta USD -->
-        <div class="bg-amber-50/60 border border-amber-200/80 rounded-xl p-3 my-2">
-          <div class="flex justify-between items-center mb-1">
-            <label class="block font-bold text-amber-900 text-xs uppercase flex items-center gap-1">
-              <span>🍹</span> Consumo Olivetta ($USD)
-            </label>
-            <span class="text-[10px] text-amber-700 font-semibold">(Pago a rendir a Olivetta)</span>
-          </div>
-          <input type="number" step="0.01" id="montoOlivettaUsd" placeholder="0.00 $" class="w-full bg-white border border-amber-300 rounded-lg p-2 font-extrabold text-amber-900 outline-none focus:ring-2 focus:ring-amber-500 text-xs">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">Tasa BCV Aplicada</label>
+          <input type="number" step="0.01" id="tasaAplicadaInput" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold outline-none">
         </div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">Referencia / Comprobante</label>
+          <input type="text" id="referenciaPago" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs outline-none" placeholder="Opcional">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">Estatus del Pago</label>
+          <select id="estadoPago" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold outline-none">
+            <option value="Pagado">Pagado</option>
+            <option value="Por Cobrar">Por Cobrar</option>
+          </select>
+        </div>
+      </div>
 
-        <div class="flex justify-end gap-2 mt-4 pt-3 border-t">
-          <button type="button" onclick="window.cerrarModalVenta()" class="px-4 py-2 border rounded-lg text-gray-600 hover:bg-gray-50">Cancelar</button>
-          <button type="submit" class="px-5 py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition">Registrar Venta</button>
-        </div>
-      </form>
-    </div>
+      <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm py-3 rounded-xl transition shadow-md">
+        💾 Finalizar y Registrar Venta
+      </button>
+    </form>
   </div>
+</div>
 
   <!-- Modal: Registrar Gasto Operativo -->
   <div id="modalGasto" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center hidden z-50 p-4">
