@@ -96,7 +96,7 @@ window.abrirModalVenta = async function(nombreClienteExistente = null) {
 
   const inputTasa = document.getElementById('tasaAplicadaInput');
   if (inputTasa && tasaActual > 0) {
-    inputTasa.value = tasaActual;
+    inputTasa.value = tasaActual.toFixed(2); // <-- Añade .toFixed(2) aquí
   }
 
   const inputNombre = document.getElementById('nombreClienta');
@@ -359,12 +359,14 @@ async function cargarTasaBcvEnLinea() {
 
   for (const getRate of apis) {
     try {
-      const euroValor = await getRate();
       if (euroValor && !isNaN(euroValor) && euroValor > 0) {
         tasaActual = parseFloat(euroValor);
         window.tasaActual = tasaActual;
         if (elMonto) {
-          elMonto.textContent = `${tasaActual.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs`;
+          // MODIFICA ESTA LÍNEA agregando .toFixed(2)
+          elMonto.textContent = `${tasaActual.toFixed(2)} Bs`; 
+          // O si prefieres mantener los puntos de mil:
+          // elMonto.textContent = `${tasaActual.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs`;
         }
         if (typeof calcularBolivares === 'function') calcularBolivares();
         return;
