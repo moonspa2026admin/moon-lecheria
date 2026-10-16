@@ -96,7 +96,7 @@ window.abrirModalVenta = async function(nombreClienteExistente = null) {
 
   const inputTasa = document.getElementById('tasaAplicadaInput');
   if (inputTasa && tasaActual > 0) {
-    inputTasa.value = tasaActual.toFixed(2); // <-- Añade .toFixed(2) aquí
+    inputTasa.value = tasaActual.toFixed(2); // Limitado a 2 decimales
   }
 
   const inputNombre = document.getElementById('nombreClienta');
@@ -334,7 +334,9 @@ async function registrarVenta(e) {
   document.getElementById('formVenta').reset();
   window.cerrarModalVenta();
   cargarVentasDia();
-}// 1. TASA OFICIAL EURO BCV
+}
+
+// 1. TASA OFICIAL EURO BCV
 async function cargarTasaBcvEnLinea() {
   const elMonto = document.getElementById('tasa-euro-monto');
   if (elMonto) elMonto.textContent = 'Cargando...';
@@ -359,15 +361,21 @@ async function cargarTasaBcvEnLinea() {
 
   for (const getRate of apis) {
     try {
+      const euroValor = await getRate(); // <--- Variable corregida y recuperada
       if (euroValor && !isNaN(euroValor) && euroValor > 0) {
         tasaActual = parseFloat(euroValor);
         window.tasaActual = tasaActual;
         if (elMonto) {
-          // MODIFICA ESTA LÍNEA agregando .toFixed(2)
-          elMonto.textContent = `${tasaActual.toFixed(2)} Bs`; 
-          // O si prefieres mantener los puntos de mil:
-          // elMonto.textContent = `${tasaActual.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs`;
+          // Muestra la tasa con formato de 2 decimales y separadores de miles
+          elMonto.textContent = `${tasaActual.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs`;
         }
+        
+        // Asignar también al input del modal si ya está abierto
+        const inputTasa = document.getElementById('tasaAplicadaInput');
+        if (inputTasa) {
+          inputTasa.value = tasaActual.toFixed(2);
+        }
+
         if (typeof calcularBolivares === 'function') calcularBolivares();
         return;
       }
@@ -1500,7 +1508,7 @@ window.cargarResumenOlivetta = async function() {
 window.registrarAbonoOlivetta = async function(e) {
   e.preventDefault();
   const montoUsd = parseFloat(document.getElementById('montoAbonoOlivetta').value) || 0;
-  const metodoPago = document.getElementById('metodoAbonoOlivetta').value;
+  const metodoPago = document.getElementById('montoAbonoOlivetta').value;
   const referencia = document.getElementById('referenciaAbonoOlivetta').value;
 
   if (montoUsd <= 0) {
